@@ -32,17 +32,18 @@ jobs:
       - name: Patch Android project
         run: python3 scripts/setup_android.py
 
-      - name: Align Kotlin and Java JVM targets
+      - name: Align Java and Kotlin bytecode targets
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("android/build.gradle.kts")
+          p = Path("android/app/build.gradle.kts")
           text = p.read_text()
-          block = '''\n\n// Nebula CI: third-party Flutter plugins may still default Kotlin bytecode to JVM 1.8.\n// Flutter's generated Android project compiles Java for JVM 11, so align all Kotlin\n// compilation tasks to JVM 11 using the Kotlin 2.x compilerOptions DSL.\nsubprojects {\n    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {\n        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)\n    }\n}\n'''
-          marker = 'tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>()'
-          if marker not in text:
-              p.write_text(text.rstrip() + block)
+          # The floating 2.x plugin compiles Kotlin to JVM 1.8. Match the app's
+          # Java target to that plugin instead of patching Kotlin internals.
+          text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_1_8")
+          p.write_text(text)
+          print("Aligned app Java bytecode target with floating plugin (JVM 1.8)")
           PY
 
       - name: Get dependencies
