@@ -32,26 +32,24 @@ jobs:
       - name: Patch Android project
         run: python3 scripts/setup_android.py
 
-      - name: Align Java bytecode targets across Android subprojects
-        shell: bash
-        run: |
-          cat >> android/build.gradle.kts <<'GRADLE'
-
-          // floating 2.x compiles Kotlin to JVM 1.8. Override Android plugin defaults
-          // after each subproject is configured, including the floating plugin.
-          subprojects {
-              afterEvaluate {
-                  tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
-                      sourceCompatibility = "1.8"
-                      targetCompatibility = "1.8"
-                  }
-              }
-          }
-          GRADLE
-          echo "Configured Java compile tasks in all Android subprojects for JVM 1.8"
-
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Patch floating JVM target
+        shell: bash
+        run: |
+          set -euo pipefail
+          floating_gradle="$(find "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev" -path '*/floating-2.0.2/android/build.gradle' -print -quit)"
+          if [[ -z "$floating_gradle" ]]; then
+            echo "floating 2.0.2 Gradle file not found"
+            find "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev" -maxdepth 2 -type d -name 'floating-*' -print || true
+            exit 1
+          fi
+          echo "Patching $floating_gradle"
+          grep -n "jvmTarget" "$floating_gradle"
+          sed -i "s/jvmTarget = '1.8'/jvmTarget = '11'/" "$floating_gradle"
+          echo "Patched floating Kotlin JVM target to 11"
+          grep -n "jvmTarget" "$floating_gradle"
 
       - name: Generate localization
         run: flutter gen-l10n
