@@ -1,0 +1,33 @@
+name: nebula
+description: Interstellar media aggregator and player (Android-first).
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+dependencies:
+  flutter: {sdk: flutter}
+  flutter_localizations: {sdk: flutter}
+  intl: any
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  dio: ^5.4.3
+  path_provider: ^2.1.3
+  media_kit: ^1.2.6            # libmpv engine: tracks, pitch, HW decode
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
+  floating: ^2.0.0          # Android Picture-in-Picture
+  wakelock_plus: ^1.2.8
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  google_fonts: ^6.2.1
+  file_picker: ^8.0.0
+  permission_handler: ^11.3.1
+dev_dependencies:
+  flutter_test: {sdk: flutter}
+  flutter_lints: ^4.0.0
+flutter:
+  uses-material-design: true
+  generate: true
