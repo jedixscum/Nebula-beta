@@ -41,3 +41,5 @@ history/profile stats, catalog builder, JSON sync export/import, Nebula Lens, st
 Chromecast/AirPlay and screen mirroring (dropped), built-in torrent engine (use addons + debrid), original-language
 audio detection (use the audio menu), background playback service/notification, Firebase sync, proxy addon,
 mood/language filters, full i18n (few strings localized), auto-quality for non-adaptive streams (direct files have one quality).
+
+<!-- CI verification trigger: analyzer policy fix -->
