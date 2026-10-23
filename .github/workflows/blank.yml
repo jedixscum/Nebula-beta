@@ -32,19 +32,21 @@ jobs:
       - name: Patch Android project
         run: python3 scripts/setup_android.py
 
-      - name: Align Java and Kotlin bytecode targets
+      - name: Align Java bytecode targets across Android subprojects
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("android/app/build.gradle.kts")
-          text = p.read_text()
-          # The floating 2.x plugin compiles Kotlin to JVM 1.8. Match the app's
-          # Java target to that plugin instead of patching Kotlin internals.
-          text = text.replace("JavaVersion.VERSION_11", "JavaVersion.VERSION_1_8")
-          p.write_text(text)
-          print("Aligned app Java bytecode target with floating plugin (JVM 1.8)")
-          PY
+          cat >> android/build.gradle.kts <<'GRADLE'
+
+          // floating 2.x compiles Kotlin to JVM 1.8. Align Java compile tasks
+          // in every Android subproject, including the floating plugin itself.
+          subprojects {
+              tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+                  sourceCompatibility = "1.8"
+                  targetCompatibility = "1.8"
+              }
+          }
+          GRADLE
+          echo "Configured Java compile tasks in all Android subprojects for JVM 1.8"
 
       - name: Get dependencies
         run: flutter pub get
