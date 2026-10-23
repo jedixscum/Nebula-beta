@@ -32,6 +32,18 @@ jobs:
       - name: Patch Android project
         run: python3 scripts/setup_android.py
 
+      - name: Align Kotlin and Java JVM targets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/build.gradle.kts")
+          text = p.read_text()
+          block = '''\n\n// Nebula CI: third-party Flutter plugins such as floating may still declare\n// Kotlin JVM 1.8. Flutter's generated Android project compiles Java for JVM 11,\n// so force every Kotlin compile task (including plugin subprojects) to JVM 11.\nsubprojects {\n    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {\n        kotlinOptions.jvmTarget = "11"\n    }\n}\n'''
+          if 'tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()' not in text:
+              p.write_text(text.rstrip() + block)
+          PY
+
       - name: Get dependencies
         run: flutter pub get
 
