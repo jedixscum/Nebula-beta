@@ -2,12 +2,12 @@ import '../domain/media_item.dart';
 
 const _base = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/';
 
-/// Demo catalog using Google's public sample videos (needs internet to play).
+/// Demo catalog using public sample videos (needs internet to play).
 const sampleItems = <MediaItem>[
   MediaItem(id: 'bbb', introEndSec: 20, title: 'Big Buck Bunny', year: 2008, type: MediaType.movie,
     synopsis: 'A giant rabbit takes revenge on three bullying rodents.',
     director: 'Sacha Goedegebure', runtimeMin: 10, rating: 7.6,
-    cast: ['Animated short'], genres: ['Animation', 'Comedy'], streamUrl: '${_base}BigBuckBunny.mp4'),
+    cast: ['Animated short'], genres: ['Animation', 'Comedy'], streamUrl: 'https://uploads.video-commander.com/sample/BigBuckBunny.mp4'),
   MediaItem(id: 'ed', introEndSec: 20, title: 'Elephants Dream', year: 2006, type: MediaType.movie,
     synopsis: 'Two strangers explore a surreal mechanical world.',
     director: 'Bassam Kurdali', runtimeMin: 11, rating: 6.4,
