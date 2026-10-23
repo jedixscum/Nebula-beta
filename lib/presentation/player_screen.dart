@@ -23,6 +23,7 @@ class PlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  // 64 MB demuxer buffer; pitch control must be enabled at construction.
   late final Player _p = Player(configuration: const PlayerConfiguration(pitch: true, bufferSize: 64 * 1024 * 1024));
   late final VideoController _vc = VideoController(_p);
   final _subs = <StreamSubscription>[];
@@ -79,8 +80,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (e != null && e.posMs > 5000 && e.posMs < e.durMs * 0.95) {
         try {
           await _p.stream.duration.firstWhere((d) => d > Duration.zero).timeout(const Duration(seconds: 10));
-          await _p.seek(Duration(milliseconds: e.posMs));
-        } catch (_) {}
+          await _p.seek(Duration(milliseconds: e.posMs)); // resume
+        } catch (_) {/* start from the beginning */}
       }
       await _p.play();
       WakelockPlus.enable();
@@ -119,8 +120,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Future<void> _pip() async {
     try {
       if (await _floating.isPipAvailable) {
-        // floating 2.x accepts PiP configuration directly on enable(); ImmediatePiP
-        // was introduced by later versions of the package.
+        // floating 2.x uses the PiP configuration directly on enable().
         await _floating.enable(aspectRatio: Rational(16, 9));
       } else {
         _snack('Picture-in-Picture is not available on this device');
@@ -231,7 +231,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               controls: NoVideoControls,
               aspectRatio: _aspect,
               fit: _fill ? BoxFit.cover : BoxFit.contain,
-              subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false),
+              subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false), // we draw our own
             ),
           if (_buffering && !_failed) const Center(child: CircularProgressIndicator()),
           if (_lens) const IgnorePointer(child: _LensOverlay()),
@@ -320,32 +320,59 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 ),
                 Padding(padding: const EdgeInsets.only(right: 12), child: Text(_fmt(_dur))),
               ]),
-            Row(children: [
-              IconButton(icon: const Icon(Icons.subtitles), onPressed: () => _subMenu('online')),
-              const Spacer(),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
               PopupMenuButton<double>(
-                tooltip: 'Playback speed',
-                initialValue: _speed,
-                onSelected: (v) { _p.setRate(v); _u(() => _speed = v); },
-                itemBuilder: (_) => [for (final v in _speeds) PopupMenuItem(value: v, child: Text('${v}x'))],
-                child: Padding(padding: const EdgeInsets.all(12), child: Text('${_speed}x')),
-              ),
-              IconButton(icon: const Icon(Icons.fullscreen), onPressed: _toggleFullscreen),
+                  tooltip: 'Speed',
+                  child: Chip(label: Text('${_speed}x')),
+                  onSelected: (s) { _p.setRate(s); setState(() => _speed = s); },
+                  itemBuilder: (_) => [for (final s in _speeds) PopupMenuItem(value: s, child: Text('${s}x'))]),
+              PopupMenuButton<String>(
+                  tooltip: 'Aspect ratio',
+                  child: const Chip(label: Text('Aspect')),
+                  onSelected: (a) => setState(() {
+                        _fill = a == 'fill';
+                        _aspect = switch (a) { '4:3' => 4 / 3, '16:9' => 16 / 9, '21:9' => 21 / 9, _ => null };
+                      }),
+                  itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'orig', child: Text('Original')),
+                        PopupMenuItem(value: '4:3', child: Text('4:3')),
+                        PopupMenuItem(value: '16:9', child: Text('16:9')),
+                        PopupMenuItem(value: '21:9', child: Text('21:9')),
+                        PopupMenuItem(value: 'fill', child: Text('Fill screen')),
+                      ]),
+              PopupMenuButton<String>(
+                  tooltip: 'Subtitles',
+                  icon: const Icon(Icons.closed_caption),
+                  onSelected: _subMenu,
+                  itemBuilder: (_) => [
+                        const PopupMenuItem(value: 'off', child: Text('Off')),
+                        for (final t in _tracks.subtitle.where((t) => t.id != 'auto' && t.id != 'no'))
+                          PopupMenuItem(value: 'emb:${t.id}', child: Text(_label(t.id, t.title, t.language))),
+                        const PopupMenuItem(value: 'online', child: Text('Search online (addons)')),
+                        const PopupMenuItem(value: 'file', child: Text('Load .srt/.vtt/.ass file')),
+                        const PopupMenuItem(value: 'tr_off', child: Text('No translation')),
+                        const PopupMenuItem(value: 'tr_es', child: Text('Translate to ES (mock)')),
+                        const PopupMenuItem(value: 'tr_fr', child: Text('Translate to FR (mock)')),
+                        const PopupMenuItem(value: 'size_up', child: Text('Larger text')),
+                        const PopupMenuItem(value: 'size_down', child: Text('Smaller text')),
+                        PopupMenuItem(value: 'glow', child: Text(_glow ? 'Neon glow: on' : 'Neon glow: off')),
+                      ]),
+              IconButton(icon: Icon(_fullscreen ? Icons.fullscreen_exit : Icons.fullscreen), onPressed: _toggleFullscreen),
             ]),
           ]),
         ),
       );
 }
 
+/// Vignette + color grade drawn over the video.
 class _LensOverlay extends StatelessWidget {
   const _LensOverlay();
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: nebulaCyan.withOpacity(0.45), width: 2),
-            boxShadow: [BoxShadow(color: nebulaCyan.withOpacity(0.08), blurRadius: 30, spreadRadius: 8)],
-          ),
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(radius: 1.1, colors: [
+            nebulaViolet.withOpacity(0.08), Colors.transparent, Colors.black.withOpacity(0.55)
+          ], stops: const [0, 0.55, 1]),
         ),
       );
 }
