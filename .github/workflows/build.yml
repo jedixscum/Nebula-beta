@@ -1,0 +1,79 @@
+name: Build Android (APKs + AAB)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # lets the workflow publish a GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # The android/ folder is generated, not committed.
+      - name: Generate Android project
+        run: |
+          flutter create --platforms=android --project-name nebula --org com.nebula .
+          rm -f test/widget_test.dart
+          python3 scripts/setup_android.py
+
+      - run: flutter pub get
+      - run: flutter gen-l10n
+
+      - name: Analyze (informational)
+        run: flutter analyze
+        continue-on-error: true
+
+      - name: Test (informational)
+        run: flutter test
+        continue-on-error: true
+
+      # --no-shrink: avoids R8 stripping native player classes.
+      - name: Build everything
+        run: |
+          mkdir -p dist
+          # 1) one APK that works on any phone (largest file)
+          flutter build apk --release --no-shrink
+          cp build/app/outputs/flutter-apk/app-release.apk dist/nebula-universal.apk
+          # 2) smaller per-architecture APKs (arm64-v8a is right for most phones)
+          flutter build apk --release --split-per-abi --no-shrink
+          for f in build/app/outputs/flutter-apk/app-*-release.apk; do
+            n=$(basename "$f" | sed -e 's/^app-//' -e 's/-release.apk$//')
+            cp "$f" "dist/nebula-$n.apk"
+          done
+          # 3) app bundle
+          flutter build appbundle --release --no-shrink
+          cp build/app/outputs/bundle/release/app-release.aab dist/nebula.aab
+          ls -lh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nebula-android
+          path: dist/*
+
+      # Publishes a Release with every file, so you can tap the APK to download it from your phone.
+      - name: Publish release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build-{0}', github.run_number) }}
+          name: Nebula ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build {0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          files: dist/*
