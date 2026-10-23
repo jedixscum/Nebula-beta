@@ -50,7 +50,7 @@ final libraryItemsProvider = Provider<List<MediaItem>>((ref) {
 const builtInAddons = [
   Addon(id: 'local', name: 'Local Media', version: '1.0.0', types: ['movie', 'series'],
       description: 'Play mp4/mkv from device storage.', builtIn: true),
-  Addon(id: 'demo', name: 'Demo Streams', version: '1.0.0', types: ['movie', 'series', 'tv'],
+  Addon(id: 'demo', name: 'Demo Streams', version: '1.0.0', types: ['movie', 'series'],
       description: 'Public sample videos.', builtIn: true),
 ];
 
@@ -99,3 +99,12 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
   }
 }
 final addonsProvider = StateNotifierProvider<AddonNotifier, List<Addon>>((_) => AddonNotifier());
+
+class FavoritesNotifier extends StateNotifier<Set<String>> {
+ final Box<String> _prefs=Hive.box<String>('prefs');
+ FavoritesNotifier():super(_load());
+ static Set<String> _load(){try{return (jsonDecode(Hive.box<String>('prefs').get('favorites',defaultValue:'[]')!) as List).cast<String>().toSet();}catch(_){return {};}}
+ void toggle(MediaItem item){final next={...state};if(!next.add(item.id)){next.remove(item.id);_prefs.delete('favoriteItem:${item.id}');}else{_prefs.put('favoriteItem:${item.id}',jsonEncode(item.toJson()));}_prefs.put('favorites',jsonEncode(next.toList()));state=next;}
+}
+final favoritesProvider=StateNotifierProvider<FavoritesNotifier,Set<String>>((_)=>FavoritesNotifier());
+final favoritesItemsProvider=Provider<List<MediaItem>>((ref){final ids=ref.watch(favoritesProvider);final prefs=Hive.box<String>('prefs');return [for(final id in ids) if(resolveItem(id)!=null) resolveItem(id)! else if(prefs.get('favoriteItem:$id')!=null) MediaItem.fromJson(jsonDecode(prefs.get('favoriteItem:$id')!) as Map<String,dynamic>)];});

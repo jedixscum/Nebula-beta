@@ -1,20 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-const nebulaViolet = Color(0xFF7C4DFF);
-const nebulaCyan = Color(0xFF18FFFF);
-const spaceBlack = Color(0xFF05060F);
-
-ThemeData nebulaTheme() {
-  final scheme = ColorScheme.fromSeed(
-      seedColor: nebulaViolet, brightness: Brightness.dark, surface: spaceBlack);
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: scheme,
-    scaffoldBackgroundColor: Colors.transparent,
-    textTheme: GoogleFonts.exo2TextTheme(ThemeData.dark().textTheme),
-    navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: spaceBlack.withOpacity(0.85),
-        indicatorColor: nebulaViolet.withOpacity(0.4)),
-  );
-}
+import '../data/theme_settings.dart';
+const nebulaViolet=Color(0xFF7C4DFF);const nebulaCyan=Color(0xFF18FFFF);const spaceBlack=Color(0xFF05060F);
+ThemeData nebulaTheme(ThemeSettingsState s){final p=s.preset;final brightness=p.light?Brightness.light:Brightness.dark;final scheme=ColorScheme.fromSeed(seedColor:s.accent,brightness:brightness,surface:s.background).copyWith(primary:s.accent,secondary:p.secondary,surface:s.background,onSurface:p.light?const Color(0xFF171923):Colors.white);final base=p.light?ThemeData.light():ThemeData.dark();return ThemeData(useMaterial3:true,brightness:brightness,colorScheme:scheme,scaffoldBackgroundColor:Colors.transparent,cardTheme:CardThemeData(color:p.light?Colors.white.withOpacity(0.88):s.background.withOpacity(0.82),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),textTheme:GoogleFonts.exo2TextTheme(base.textTheme).apply(bodyColor:scheme.onSurface,displayColor:scheme.onSurface),appBarTheme:AppBarTheme(backgroundColor:s.background.withOpacity(0.78),foregroundColor:scheme.onSurface,elevation:0),navigationBarTheme:NavigationBarThemeData(backgroundColor:s.background.withOpacity(0.92),indicatorColor:s.accent.withOpacity(0.24),labelTextStyle:WidgetStatePropertyAll(TextStyle(color:scheme.onSurface))),chipTheme:ChipThemeData(backgroundColor:s.background.withOpacity(0.72),selectedColor:s.accent.withOpacity(0.24),side:BorderSide(color:s.accent.withOpacity(0.22))));}

@@ -7,6 +7,7 @@ import '../data/addon_client.dart';
 import '../data/addon_service.dart';
 import '../data/download_manager.dart';
 import '../data/providers.dart';
+import '../data/theme_settings.dart';
 import '../domain/media_item.dart';
 import '../l10n/app_localizations.dart';
 
@@ -73,6 +74,8 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
     final seasons = {for (final e in episodes) e.season}.toList()..sort();
     final season = _season ?? (seasons.contains(1) ? 1 : (seasons.isEmpty ? null : seasons.first));
     final inLib = ref.watch(libraryProvider).contains(item.id);
+    final isFavorite = ref.watch(favoritesProvider).contains(item.id);
+    final themeSettings = ref.watch(themeSettingsProvider);
     final dl = ref.watch(downloadsProvider)[item.id];
     final done = dl?.status == DlStatus.done;
     final playable = done ? item.copyWith(streamUrl: 'file://${dl!.path}') : item;
@@ -80,6 +83,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
     final isSeries = isAddonItem && item.type == MediaType.show;
 
     return Starfield(
+      enabled: themeSettings.starfieldEnabled,
       child: Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: Text(item.title)),
         body: ListView(padding: const EdgeInsets.all(16), children: [
@@ -134,6 +138,11 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                       dl?.status == DlStatus.running ? m.pause(item.id) : m.start(item);
                     },
             ),
+          OutlinedButton.icon(
+            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            label: Text(isFavorite ? 'Remove favorite' : 'Add to favorites'),
+            onPressed: () => ref.read(favoritesProvider.notifier).toggle(item),
+          ),
           OutlinedButton.icon(
             icon: Icon(inLib ? Icons.bookmark_remove : Icons.bookmark_add),
             label: Text(inLib ? 'Remove from library' : 'Add to library'),

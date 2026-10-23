@@ -28,15 +28,6 @@ const sampleItems = <MediaItem>[
     synopsis: 'Demo episode: a joyride reel.',
     director: 'Google', runtimeMin: 1, rating: 5.0,
     cast: [], genres: ['Demo'], streamUrl: '${_base}ForBiggerJoyrides.mp4'),
-  MediaItem(id: 'live1', title: 'Nebula Live One', year: 2026, type: MediaType.live,
-    synopsis: 'Static Live TV placeholder.', director: '-', runtimeMin: 0, rating: 0,
-    cast: [], genres: ['Live'], streamUrl: '${_base}BigBuckBunny.mp4'),
-  MediaItem(id: 'live2', title: 'Nebula Live Two', year: 2026, type: MediaType.live,
-    synopsis: 'Static Live TV placeholder.', director: '-', runtimeMin: 0, rating: 0,
-    cast: [], genres: ['Live'], streamUrl: '${_base}Sintel.mp4'),
-  MediaItem(id: 'live3', title: 'Cosmos 24', year: 2026, type: MediaType.live,
-    synopsis: 'Static Live TV placeholder.', director: '-', runtimeMin: 0, rating: 0,
-    cast: [], genres: ['Live'], streamUrl: '${_base}TearsOfSteel.mp4'),
 ];
 
 MediaItem? findItem(String id) {

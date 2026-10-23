@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/theme_settings.dart';
 import '../core/starfield.dart';
 import '../core/theme.dart';
 import '../domain/media_item.dart';
@@ -93,12 +95,13 @@ class CosmicRow extends StatelessWidget {
 }
 
 /// Starfield-backed page with an app bar, used for pushed sub-screens.
-class SubPage extends StatelessWidget {
+class SubPage extends ConsumerWidget {
   final String title;
   final Widget child;
   const SubPage({super.key, required this.title, required this.child});
   @override
-  Widget build(BuildContext context) => Starfield(
+  Widget build(BuildContext context, WidgetRef ref) => Starfield(
+        enabled: ref.watch(themeSettingsProvider).starfieldEnabled,
         child: Scaffold(
           appBar: AppBar(backgroundColor: Colors.transparent, title: Text(title)),
           body: SafeArea(child: child),

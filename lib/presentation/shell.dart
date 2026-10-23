@@ -6,40 +6,39 @@ import '../core/starfield.dart';
 import '../data/addon_client.dart';
 import '../data/addon_service.dart';
 import '../data/catalog.dart';
-import '../data/epg.dart';
 import '../data/history_store.dart';
 import '../data/home_layout.dart';
 import '../data/providers.dart';
 import '../data/recommender.dart';
 import '../data/sample_data.dart';
+import '../data/theme_settings.dart';
 import '../data/sync_service.dart';
 import '../domain/addon.dart';
 import '../domain/media_item.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
 
-class Shell extends StatefulWidget {
+class Shell extends ConsumerStatefulWidget {
   const Shell({super.key});
   @override
-  State<Shell> createState() => _ShellState();
+  ConsumerState<Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<Shell> {
+class _ShellState extends ConsumerState<Shell> {
   int _i = 0;
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final settings = ref.watch(themeSettingsProvider);
     final pages = <Widget>[
       const HomePage(),
       const CatalogGrid(type: MediaType.movie),
       const CatalogGrid(type: MediaType.show),
-      const LiveTvPage(),
       const LibraryPage(),
       const ProfilePage(),
     ];
-    return Starfield(
-      child: Scaffold(
+    final content = Scaffold(
         body: SafeArea(child: pages[_i]),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _i,
@@ -48,13 +47,12 @@ class _ShellState extends State<Shell> {
             NavigationDestination(icon: const Icon(Icons.home_outlined), label: t.home),
             NavigationDestination(icon: const Icon(Icons.movie_outlined), label: t.movies),
             NavigationDestination(icon: const Icon(Icons.tv), label: t.tvShows),
-            NavigationDestination(icon: const Icon(Icons.live_tv), label: t.liveTv),
             NavigationDestination(icon: const Icon(Icons.bookmarks_outlined), label: t.library),
             const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
         ),
-      ),
-    );
+      );
+    return Starfield(enabled: settings.starfieldEnabled, child: content);
   }
 }
 
@@ -157,6 +155,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               case 'new': return ([...items]..sort((a, b) => b.year.compareTo(a.year)));
               case 'top': return ([...items]..sort((a, b) => b.rating.compareTo(a.rating)));
               case 'library': return libItems;
+              case 'continue': return HistoryStore().all().where((e) => e.durMs > 0 && e.posMs < e.durMs * 0.92).map((e) => resolveItem(e.id)).whereType<MediaItem>().toList();
+              case 'favorites': return ref.watch(favoritesItemsProvider);
               default: return items;
             }
           }
@@ -279,136 +279,3 @@ class _PosterGrid extends StatelessWidget {
       );
 }
 
-/// Live TV with multiple channels and a mock half-hour EPG.
-class LiveTvPage extends StatelessWidget {
-  const LiveTvPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final channels = sampleItems.where((m) => m.type == MediaType.live).toList();
-    return ListView(children: [
-      for (final ch in channels) ...[
-        ListTile(
-          leading: const Icon(Icons.play_circle_fill),
-          title: Text(ch.title),
-          subtitle: Text('Now: ${scheduleFor(ch.id, now).first.title}'),
-          onTap: () => context.push('/player', extra: ch),
-        ),
-        SizedBox(
-          height: 56,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-            for (final p in scheduleFor(ch.id, now))
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(p.label, style: const TextStyle(fontSize: 11, color: Colors.white60)),
-                  Text(p.title, style: const TextStyle(fontSize: 13)),
-                ]),
-              ),
-          ]),
-        ),
-        const Divider(height: 24),
-      ],
-    ]);
-  }
-}
-
-class ProfilePage extends ConsumerWidget {
-  const ProfilePage({super.key});
-
-  Future<String?> _paste(BuildContext c) {
-    final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: c,
-      builder: (d) => AlertDialog(
-        title: const Text('Paste sync JSON'),
-        content: TextField(controller: ctrl, maxLines: 6),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(d, ctrl.text), child: const Text('Import')),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hist = HistoryStore().all();
-    final lib = ref.watch(libraryProvider);
-    final minutes = hist.fold<int>(0, (a, e) => a + e.posMs ~/ 60000);
-    final genreCount = <String, int>{};
-    for (final e in hist) {
-      for (final g in e.genres) { genreCount[g] = (genreCount[g] ?? 0) + 1; }
-    }
-    final top = genreCount.entries.isEmpty
-        ? '-'
-        : (genreCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).first.key;
-    void snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('Continuum', style: Theme.of(context).textTheme.headlineSmall),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, children: [
-        Chip(label: Text('${hist.length} titles started')),
-        Chip(label: Text('$minutes min watched')),
-        Chip(label: Text('${lib.length} in library')),
-        Chip(label: Text('Top genre: $top')),
-      ]),
-      TextButton.icon(
-        icon: const Icon(Icons.share),
-        label: const Text('Share to space (copy)'),
-        onPressed: () {
-          Clipboard.setData(ClipboardData(text: 'I watched $minutes minutes across ${hist.length} titles in Nebula. Top genre: $top.'));
-          snack('Copied');
-        },
-      ),
-      const Divider(),
-      ListTile(leading: const Icon(Icons.extension), title: const Text('Addons'), onTap: () => context.push('/addons')),
-      ListTile(leading: const Icon(Icons.download), title: const Text('Downloads'), onTap: () => context.push('/downloads')),
-      ListTile(leading: const Icon(Icons.library_add), title: const Text('Catalog builder'), onTap: () => context.push('/catalog')),
-      ListTile(leading: const Icon(Icons.dashboard_customize), title: const Text('Home layout'), onTap: () => context.push('/layout')),
-      ListTile(
-        leading: const Icon(Icons.upload),
-        title: const Text('Export sync data'),
-        subtitle: const Text('Copies JSON for another device'),
-        onTap: () { Clipboard.setData(ClipboardData(text: exportAll())); snack('Sync data copied'); },
-      ),
-      ListTile(
-        leading: const Icon(Icons.download_for_offline),
-        title: const Text('Import sync data'),
-        subtitle: const Text('Replaces library, history, catalog, layout'),
-        onTap: () async {
-          final json = await _paste(context);
-          if (json == null || json.trim().isEmpty) return;
-          try {
-            await importAll(json);
-            ref.invalidate(libraryProvider);
-            ref.invalidate(catalogProvider);
-            ref.invalidate(homeLayoutProvider);
-            snack('Imported');
-          } catch (e) {
-            snack('Import failed: $e');
-          }
-        },
-      ),
-      const Divider(),
-      Text('Continuum Watch History', style: Theme.of(context).textTheme.titleMedium),
-      if (hist.isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('Nothing watched yet.')),
-      for (final e in hist)
-        ListTile(
-          title: Text(e.title),
-          subtitle: LinearProgressIndicator(value: e.durMs > 0 ? (e.posMs / e.durMs).clamp(0, 1).toDouble() : 0),
-          onTap: () {
-            final it = findItem(e.id);
-            if (it != null) {
-              context.push('/player', extra: it);
-            } else {
-              snack('Open it from its detail page to pick a stream again');
-            }
-          },
-        ),
-    ]);
-  }
-}

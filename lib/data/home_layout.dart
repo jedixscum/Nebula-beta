@@ -8,7 +8,9 @@ const homeSectionTitles = {
   'popular': 'Popular',
   'new': 'New Releases',
   'top': 'Top Rated',
-  'library': 'My Library',
+  'library': 'My Watchlist',
+  'continue': 'Continue Watching',
+  'favorites': 'Favorites',
 };
 
 class HomeSection {
