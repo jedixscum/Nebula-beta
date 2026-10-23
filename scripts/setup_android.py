@@ -27,4 +27,41 @@ for name in ('app/build.gradle.kts', 'app/build.gradle'):
     t = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', t)
     t = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24', t)
     f.write_text(t)
+# --- Picture-in-Picture: tiny MethodChannel in MainActivity (no third-party plugin)
+acts = list(root.glob('app/src/main/kotlin/**/MainActivity.kt'))
+if not acts:
+    sys.exit('MainActivity.kt not found')
+act = acts[0]
+pkg = re.search(r'^package\s+([\w.]+)', act.read_text(), re.M).group(1)
+act.write_text('''package %s
+
+import android.app.PictureInPictureParams
+import android.os.Build
+import android.util.Rational
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nebula/pip").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isAvailable" -> result.success(
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        packageManager.hasSystemFeature("android.software.picture_in_picture"))
+                "enter" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val params = PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build()
+                        result.success(enterPictureInPictureMode(params))
+                    } else {
+                        result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+}
+''' % pkg)
 print('android/ patched')

@@ -23,7 +23,7 @@ and sets minSdk 24.
 
 ## Player
 media_kit (libmpv): hardware decoding, embedded and external subtitle tracks (srt/vtt/ass), audio-track
-switching, speed 0.25x-4x, pitch control, HTTP headers, aspect/fill modes, PiP (via `floating`).
+switching, speed 0.25x-4x, pitch control, HTTP headers, aspect/fill modes, PiP (native Android, via a small MethodChannel in MainActivity).
 
 ## Addons
 Install by manifest URL (Addons page, from Profile). Supports catalog, meta, stream and subtitles resources.

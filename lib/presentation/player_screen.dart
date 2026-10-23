@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
-import 'package:floating/floating.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +26,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   late final Player _p = Player(configuration: const PlayerConfiguration(pitch: true, bufferSize: 64 * 1024 * 1024));
   late final VideoController _vc = VideoController(_p);
   final _subs = <StreamSubscription>[];
-  final _floating = Floating();
+  static const _pipChannel = MethodChannel('nebula/pip'); // implemented in MainActivity.kt
   final _hist = HistoryStore();
 
   Duration _pos = Duration.zero, _dur = Duration.zero, _buffer = Duration.zero;
@@ -97,7 +96,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     WakelockPlus.disable();
     SystemChrome.setPreferredOrientations([]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _floating.dispose();
     _p.dispose();
     super.dispose();
   }
@@ -119,12 +117,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _pip() async {
     try {
-      if (await _floating.isPipAvailable) {
-        // floating 2.x uses the PiP configuration directly on enable().
-        await _floating.enable(aspectRatio: Rational(16, 9));
-      } else {
-        _snack('Picture-in-Picture is not available on this device');
-      }
+      final ok = await _pipChannel.invokeMethod<bool>('isAvailable') ?? false;
+      if (!ok) { _snack('Picture-in-Picture is not available on this device'); return; }
+      await _pipChannel.invokeMethod('enter');
     } catch (_) { _snack('Picture-in-Picture failed'); }
   }
 
