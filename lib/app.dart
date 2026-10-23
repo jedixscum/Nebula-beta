@@ -14,7 +14,6 @@ import 'presentation/player_screen.dart';
 import 'presentation/addons_screen.dart';
 import 'presentation/library_tools.dart';
 import 'presentation/widgets.dart';
-import 'presentation/widgets.dart';
 
 final _router = GoRouter(routes: [
   GoRoute(path: '/', builder: (_, __) => const Shell()),

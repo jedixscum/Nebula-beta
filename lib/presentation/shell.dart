@@ -279,3 +279,102 @@ class _PosterGrid extends StatelessWidget {
       );
 }
 
+class ProfilePage extends ConsumerWidget {
+  const ProfilePage({super.key});
+
+  Future<String?> _paste(BuildContext c) {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: c,
+      builder: (d) => AlertDialog(
+        title: const Text('Paste sync JSON'),
+        content: TextField(controller: ctrl, maxLines: 6),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, ctrl.text), child: const Text('Import')),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hist = HistoryStore().all();
+    final lib = ref.watch(libraryProvider);
+    final minutes = hist.fold<int>(0, (a, e) => a + e.posMs ~/ 60000);
+    final genreCount = <String, int>{};
+    for (final e in hist) {
+      for (final g in e.genres) { genreCount[g] = (genreCount[g] ?? 0) + 1; }
+    }
+    final top = genreCount.entries.isEmpty
+        ? '-'
+        : (genreCount.entries.toList()..sort((a, b) => b.value.compareTo(a.value))).first.key;
+    void snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      Text('Continuum', style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, children: [
+        Chip(label: Text('${hist.length} titles started')),
+        Chip(label: Text('$minutes min watched')),
+        Chip(label: Text('${lib.length} in library')),
+        Chip(label: Text('Top genre: $top')),
+      ]),
+      TextButton.icon(
+        icon: const Icon(Icons.share),
+        label: const Text('Share to space (copy)'),
+        onPressed: () {
+          Clipboard.setData(ClipboardData(text: 'I watched $minutes minutes across ${hist.length} titles in Nebula. Top genre: $top.'));
+          snack('Copied');
+        },
+      ),
+      const Divider(),
+      ListTile(leading: const Icon(Icons.extension), title: const Text('Addons'), onTap: () => context.push('/addons')),
+      ListTile(leading: const Icon(Icons.download), title: const Text('Downloads'), onTap: () => context.push('/downloads')),
+      ListTile(leading: const Icon(Icons.library_add), title: const Text('Catalog builder'), onTap: () => context.push('/catalog')),
+      ListTile(leading: const Icon(Icons.dashboard_customize), title: const Text('Home layout'), onTap: () => context.push('/layout')),
+      ListTile(leading: const Icon(Icons.palette_outlined), title: const Text('Appearance & themes'), subtitle: const Text('30 palettes, custom colors and effects'), onTap: () => context.push('/appearance')),
+      ListTile(leading: const Icon(Icons.favorite_outline), title: const Text('Favorites'), subtitle: const Text('Your saved favorite titles'), onTap: () => context.push('/favorites')),
+      ListTile(
+        leading: const Icon(Icons.upload),
+        title: const Text('Export sync data'),
+        subtitle: const Text('Copies JSON for another device'),
+        onTap: () { Clipboard.setData(ClipboardData(text: exportAll())); snack('Sync data copied'); },
+      ),
+      ListTile(
+        leading: const Icon(Icons.download_for_offline),
+        title: const Text('Import sync data'),
+        subtitle: const Text('Replaces library, history, catalog, layout'),
+        onTap: () async {
+          final json = await _paste(context);
+          if (json == null || json.trim().isEmpty) return;
+          try {
+            await importAll(json);
+            ref.invalidate(libraryProvider);
+            ref.invalidate(catalogProvider);
+            ref.invalidate(homeLayoutProvider);
+            snack('Imported');
+          } catch (e) {
+            snack('Import failed: $e');
+          }
+        },
+      ),
+      const Divider(),
+      Text('Continuum Watch History', style: Theme.of(context).textTheme.titleMedium),
+      if (hist.isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('Nothing watched yet.')),
+      for (final e in hist)
+        ListTile(
+          title: Text(e.title),
+          subtitle: LinearProgressIndicator(value: e.durMs > 0 ? (e.posMs / e.durMs).clamp(0, 1).toDouble() : 0),
+          onTap: () {
+            final it = findItem(e.id);
+            if (it != null) {
+              context.push('/player', extra: it);
+            } else {
+              snack('Open it from its detail page to pick a stream again');
+            }
+          },
+        ),
+    ]);
+  }
+}
