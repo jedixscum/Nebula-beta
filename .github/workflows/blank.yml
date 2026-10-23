@@ -37,12 +37,14 @@ jobs:
         run: |
           cat >> android/build.gradle.kts <<'GRADLE'
 
-          // floating 2.x compiles Kotlin to JVM 1.8. Align Java compile tasks
-          // in every Android subproject, including the floating plugin itself.
+          // floating 2.x compiles Kotlin to JVM 1.8. Override Android plugin defaults
+          // after each subproject is configured, including the floating plugin.
           subprojects {
-              tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
-                  sourceCompatibility = "1.8"
-                  targetCompatibility = "1.8"
+              afterEvaluate {
+                  tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+                      sourceCompatibility = "1.8"
+                      targetCompatibility = "1.8"
+                  }
               }
           }
           GRADLE
