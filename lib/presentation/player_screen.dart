@@ -37,8 +37,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   double _speed = 1.0, _pitch = 1.0, _subSize = 18;
   double? _aspect;
   bool _fill = false, _controls = true, _lens = false, _stats = false, _fullscreen = false;
-  bool _failed = false, _glow = true;
-  String? _trLang, _hw;
+  bool _failed = false, _glow = true, _starting = false;
+  String? _trLang, _hw, _playbackError;
 
   static const _speeds = [0.25, 0.5, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
   static const _pitches = [0.8, 0.9, 1.0, 1.1, 1.25];
@@ -59,7 +59,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       _p.stream.subtitle.listen((v) => _u(() => _subText = v.join('\n').trim())),
       _p.stream.width.listen((v) => _u(() => _w = v ?? 0)),
       _p.stream.height.listen((v) => _u(() => _h = v ?? 0)),
-      _p.stream.error.listen((_) => _u(() => _failed = true)),
+      _p.stream.error.listen((error) => _u(() {
+        _playbackError = error.toString().trim().isEmpty
+            ? 'The media engine reported an unknown playback error.'
+            : error.toString();
+        _failed = true;
+        _starting = false;
+        _buffering = false;
+      })),
       _p.stream.position.listen((v) {
         if (!mounted) return;
         if (!_isLive && _dur > Duration.zero && (v.inSeconds - _lastSaveSec).abs() >= 5) {
@@ -73,8 +80,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 
   Future<void> _start() async {
+    _u(() {
+      _failed = false;
+      _starting = true;
+      _buffering = true;
+      _playbackError = null;
+    });
     try {
-      await _p.open(Media(widget.item.streamUrl!, httpHeaders: widget.item.headers), play: false);
+      final url = widget.item.streamUrl;
+      if (url == null || url.trim().isEmpty) {
+        throw StateError('This title has no playable stream URL.');
+      }
+      await _p.open(
+        Media(url, httpHeaders: widget.item.headers),
+        play: false,
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        throw TimeoutException('The player timed out opening the stream after 30 seconds.');
+      });
       final e = _isLive ? null : _hist.get(widget.item.id);
       if (e != null && e.posMs > 5000 && e.posMs < e.durMs * 0.95) {
         try {
@@ -83,10 +105,23 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         } catch (_) {/* start from the beginning */}
       }
       await _p.play();
+      _u(() => _starting = false);
       WakelockPlus.enable();
-    } catch (_) {
-      _u(() => _failed = true);
+    } catch (error) {
+      _u(() {
+        _playbackError = error.toString();
+        _failed = true;
+        _starting = false;
+        _buffering = false;
+      });
     }
+  }
+
+  Future<void> _retryPlayback() async {
+    try {
+      await _p.stop();
+    } catch (_) {}
+    await _start();
   }
 
   @override
@@ -219,7 +254,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         onTap: () => setState(() => _controls = !_controls),
         child: Stack(fit: StackFit.expand, children: [
           if (_failed)
-            const Center(child: Text('Could not play this stream.'))
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.white70, size: 44),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Could not play this stream',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      SelectableText(
+                        _playbackError ?? 'No detailed error was reported by the media engine.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: _starting ? null : _retryPlayback,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(_starting ? 'Retrying…' : 'Retry playback'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
           else
             Video(
               controller: _vc,
@@ -228,7 +294,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               fit: _fill ? BoxFit.cover : BoxFit.contain,
               subtitleViewConfiguration: const SubtitleViewConfiguration(visible: false), // we draw our own
             ),
-          if (_buffering && !_failed) const Center(child: CircularProgressIndicator()),
+          if ((_buffering || _starting) && !_failed)
+            const Center(child: CircularProgressIndicator()),
           if (_lens) const IgnorePointer(child: _LensOverlay()),
           if (sub.isNotEmpty)
             Positioned(
