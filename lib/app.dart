@@ -15,9 +15,11 @@ import 'presentation/addons_screen.dart';
 import 'presentation/library_tools.dart';
 import 'presentation/widgets.dart';
 import 'presentation/catalog_browser_screen.dart';
+import 'presentation/launch_screen.dart';
 
 final _router = GoRouter(routes: [
   GoRoute(path: '/', builder: (_, __) => const Shell()),
+  GoRoute(path: '/launch', builder: (_, __) => const LaunchScreen()),
   GoRoute(path: '/detail', builder: (_, s) => DetailScreen(item: s.extra as MediaItem)),
   GoRoute(path: '/player', builder: (_, s) => PlayerScreen(item: s.extra as MediaItem)),
   GoRoute(path: '/addons', builder: (_, __) => const SubPage(title: 'Addons', child: AddonsScreen())),
