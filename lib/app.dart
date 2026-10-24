@@ -17,19 +17,22 @@ import 'presentation/widgets.dart';
 import 'presentation/catalog_browser_screen.dart';
 import 'presentation/launch_screen.dart';
 
-final _router = GoRouter(routes: [
-  GoRoute(path: '/', builder: (_, __) => const Shell()),
-  GoRoute(path: '/launch', builder: (_, __) => const LaunchScreen()),
-  GoRoute(path: '/detail', builder: (_, s) => DetailScreen(item: s.extra as MediaItem)),
-  GoRoute(path: '/player', builder: (_, s) => PlayerScreen(item: s.extra as MediaItem)),
-  GoRoute(path: '/addons', builder: (_, __) => const SubPage(title: 'Addons', child: AddonsScreen())),
-  GoRoute(path: '/downloads', builder: (_, __) => const SubPage(title: 'Downloads', child: DownloadsScreen())),
-  GoRoute(path: '/catalog', builder: (_, __) => const SubPage(title: 'Catalog builder', child: CatalogScreen())),
-  GoRoute(path: '/layout', builder: (_, __) => const SubPage(title: 'Home layout', child: HomeLayoutScreen())),
-  GoRoute(path: '/appearance', builder: (_, __) => const SubPage(title: 'Appearance & themes', child: AppearanceScreen())),
-  GoRoute(path: '/favorites', builder: (_, __) => const SubPage(title: 'Favorites', child: FavoritesScreen())),
-  GoRoute(path: '/catalog-browser', builder: (_, s) => CatalogBrowserScreen(args: s.extra as CatalogBrowserArgs)),
-]);
+final _router = GoRouter(
+  initialLocation: '/launch',
+  routes: [
+    GoRoute(path: '/', builder: (_, __) => const Shell()),
+    GoRoute(path: '/launch', builder: (_, __) => const LaunchScreen()),
+    GoRoute(path: '/detail', builder: (_, s) => DetailScreen(item: s.extra as MediaItem)),
+    GoRoute(path: '/player', builder: (_, s) => PlayerScreen(item: s.extra as MediaItem)),
+    GoRoute(path: '/addons', builder: (_, __) => const SubPage(title: 'Addons', child: AddonsScreen())),
+    GoRoute(path: '/downloads', builder: (_, __) => const SubPage(title: 'Downloads', child: DownloadsScreen())),
+    GoRoute(path: '/catalog', builder: (_, __) => const SubPage(title: 'Catalog builder', child: CatalogScreen())),
+    GoRoute(path: '/layout', builder: (_, __) => const SubPage(title: 'Home layout', child: HomeLayoutScreen())),
+    GoRoute(path: '/appearance', builder: (_, __) => const SubPage(title: 'Appearance & themes', child: AppearanceScreen())),
+    GoRoute(path: '/favorites', builder: (_, __) => const SubPage(title: 'Favorites', child: FavoritesScreen())),
+    GoRoute(path: '/catalog-browser', builder: (_, s) => CatalogBrowserScreen(args: s.extra as CatalogBrowserArgs)),
+  ],
+);
 
 class FavoritesScreen extends ConsumerWidget {
  const FavoritesScreen({super.key});
