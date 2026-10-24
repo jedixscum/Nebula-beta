@@ -257,7 +257,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
     return GridView.builder(
       controller: _sc,
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
           maxCrossAxisExtent: MediaQuery.sizeOf(context).width >= 800 ? 220 : 160, childAspectRatio: 2 / 3, mainAxisSpacing: 12, crossAxisSpacing: 12),
       itemCount: _items.length + extra,
       itemBuilder: (_, i) => i < _items.length
@@ -368,7 +368,12 @@ class ProfilePage extends ConsumerWidget {
           title: Text(e.title),
           subtitle: LinearProgressIndicator(value: e.durMs > 0 ? (e.posMs / e.durMs).clamp(0, 1).toDouble() : 0),
           onTap: () {
-            final it = findItem(e.id);
+            MediaItem? it = resolveItem(e.id);
+            if (it == null) {
+              for (final favorite in ref.read(favoritesItemsProvider)) {
+                if (favorite.id == e.id) { it = favorite; break; }
+              }
+            }
             if (it != null) {
               context.push('/player', extra: it);
             } else {
