@@ -56,17 +56,52 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
     for (final v in Hive.box<String>('addons').values) {
       try {
         final j = jsonDecode(v) as Map<String, dynamic>;
-        out.add(j['manifest'] is Map
+        final a = j['manifest'] is Map
             ? Addon.fromManifest(Map<String, dynamic>.from(j['manifest'] as Map), baseUrl: j['base'] as String?)
-            : Addon.fromManifest(j));
+            : Addon.fromManifest(j);
+        final s = j['settings'] is Map ? Map<String, dynamic>.from(j['settings'] as Map) : <String, dynamic>{};
+        out.add(a.copyWithSettings(
+          enabled: s['enabled'] is bool ? s['enabled'] as bool : true,
+          showInHome: s['showInHome'] is bool ? s['showInHome'] as bool : true,
+          includeInSearch: s['includeInSearch'] is bool ? s['includeInSearch'] as bool : true,
+          useForStreams: s['useForStreams'] is bool ? s['useForStreams'] as bool : true,
+          useForMetadata: s['useForMetadata'] is bool ? s['useForMetadata'] as bool : true,
+          useForSubtitles: s['useForSubtitles'] is bool ? s['useForSubtitles'] as bool : true,
+        ));
       } catch (_) {/* skip corrupt entry */}
     }
     return out;
   }
 
   void _store(Addon a) {
-    _box.put(a.id, jsonEncode({'base': a.baseUrl, 'manifest': a.raw}));
+    _box.put(a.id, jsonEncode({
+      'base': a.baseUrl,
+      'manifest': a.raw,
+      'settings': {
+        'enabled': a.enabled,
+        'showInHome': a.showInHome,
+        'includeInSearch': a.includeInSearch,
+        'useForStreams': a.useForStreams,
+        'useForMetadata': a.useForMetadata,
+        'useForSubtitles': a.useForSubtitles,
+      },
+    }));
     state = [...state.where((e) => e.id != a.id), a];
+  }
+
+  /// Change a single add-on preference without modifying its manifest.
+  void updateSettings(String id, {
+    bool? enabled, bool? showInHome, bool? includeInSearch,
+    bool? useForStreams, bool? useForMetadata, bool? useForSubtitles,
+  }) {
+    Addon? current;
+    for (final a in state) { if (a.id == id) { current = a; break; } }
+    if (current == null) return;
+    _store(current.copyWithSettings(
+      enabled: enabled, showInHome: showInHome, includeInSearch: includeInSearch,
+      useForStreams: useForStreams, useForMetadata: useForMetadata,
+      useForSubtitles: useForSubtitles,
+    ));
   }
 
   /// Install from a manifest URL (https://, or the stremio:// form). Throws on failure.
@@ -76,7 +111,16 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
     if (!u.startsWith('http')) throw const FormatException('Enter a manifest URL');
     if (!u.endsWith('/manifest.json')) u = u.endsWith('/') ? '${u}manifest.json' : '$u/manifest.json';
     final base = u.substring(0, u.length - '/manifest.json'.length);
-    final a = Addon.fromManifest(await _client.manifest(u), baseUrl: base);
+    var a = Addon.fromManifest(await _client.manifest(u), baseUrl: base);
+    // Refreshing an add-on should not reset the user's choices.
+    for (final old in state.where((e) => e.id == a.id)) {
+      a = a.copyWithSettings(
+        enabled: old.enabled, showInHome: old.showInHome,
+        includeInSearch: old.includeInSearch, useForStreams: old.useForStreams,
+        useForMetadata: old.useForMetadata, useForSubtitles: old.useForSubtitles,
+      );
+      break;
+    }
     _store(a);
     return a;
   }

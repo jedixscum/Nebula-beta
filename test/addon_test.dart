@@ -27,6 +27,18 @@ void main() {
     expect(a.supports('stream', 'movie', 'kitsu:1'), isFalse);
   });
 
+  test('add-on preferences default on and can be changed independently', () {
+    final a = Addon.fromManifest(manifest, baseUrl: 'https://x.test');
+    final customized = a.copyWithSettings(showInHome: false, useForStreams: false);
+    expect(customized.enabled, isTrue);
+    expect(customized.showInHome, isFalse);
+    expect(customized.includeInSearch, isTrue);
+    expect(customized.useForStreams, isFalse);
+    expect(customized.useForMetadata, isTrue);
+    expect(customized.useForSubtitles, isTrue);
+    expect(a.showInHome, isTrue); // original remains immutable
+  });
+
   test('manifest without id throws', () {
     expect(() => Addon.fromManifest({'name': 'X'}), throwsFormatException);
   });

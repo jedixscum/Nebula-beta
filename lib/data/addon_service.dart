@@ -22,7 +22,7 @@ final addonRowsProvider = FutureProvider<List<AddonRow>>((ref) async {
   final addons = ref.watch(addonsProvider);
   final client = ref.read(addonClientProvider);
   final jobs = <Future<AddonRow?>>[];
-  for (final a in addons.where((a) => a.remote && a.resources.containsKey('catalog'))) {
+  for (final a in addons.where((a) => a.remote && a.enabled && a.showInHome && a.resources.containsKey('catalog'))) {
     for (final catalog in a.browseCatalogs) {
       jobs.add(() async {
         try {
@@ -45,7 +45,7 @@ final searchResultsProvider = FutureProvider<List<MediaItem>>((ref) async {
   final addons = ref.watch(addonsProvider);
   final client = ref.read(addonClientProvider);
   final jobs = <Future<List<MediaItem>>>[];
-  for (final a in addons.where((a) => a.remote && a.resources.containsKey('catalog'))) {
+  for (final a in addons.where((a) => a.remote && a.enabled && a.includeInSearch && a.resources.containsKey('catalog'))) {
     for (final catalog in a.catalogs.where((c) => c.supportsSearch).take(3)) {
       jobs.add(client.catalog(a, catalog.type, catalog.id, search: q)
           .catchError((_) => <MediaItem>[]));
@@ -66,7 +66,7 @@ final searchResultsProvider = FutureProvider<List<MediaItem>>((ref) async {
 final metaProvider = FutureProvider.family<MetaDetail?, (String, String)>((ref, key) async {
   final (type, id) = key;
   final client = ref.read(addonClientProvider);
-  for (final a in ref.read(addonsProvider).where((a) => a.remote && a.supports('meta', type, id))) {
+  for (final a in ref.watch(addonsProvider).where((a) => a.remote && a.enabled && a.useForMetadata && a.supports('meta', type, id))) {
     try {
       final m = await client.meta(a, type, id);
       if (m != null) return m;
@@ -79,7 +79,7 @@ final metaProvider = FutureProvider.family<MetaDetail?, (String, String)>((ref, 
 Future<List<StreamOption>> streamsFor(WidgetRef ref, String type, String id) async {
   final client = ref.read(addonClientProvider);
   final jobs = [
-    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.supports('stream', type, id)))
+    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.enabled && a.useForStreams && a.supports('stream', type, id)))
       client.streams(a, type, id).catchError((_) => <StreamOption>[])
   ];
   return (await Future.wait(jobs)).expand((e) => e).toList();
@@ -89,7 +89,7 @@ Future<List<StreamOption>> streamsFor(WidgetRef ref, String type, String id) asy
 Future<List<ExtSub>> subtitlesFor(WidgetRef ref, String type, String id) async {
   final client = ref.read(addonClientProvider);
   final jobs = [
-    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.supports('subtitles', type, id)))
+    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.enabled && a.useForSubtitles && a.supports('subtitles', type, id)))
       client.subtitles(a, type, id).catchError((_) => <ExtSub>[])
   ];
   return (await Future.wait(jobs)).expand((e) => e).toList();

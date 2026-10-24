@@ -15,6 +15,8 @@ class Addon {
   final String id, name, description, version;
   final List<String> types, idPrefixes;
   final bool builtIn;
+  /// Per-install preferences; persisted separately from the remote manifest.
+  final bool enabled, showInHome, includeInSearch, useForStreams, useForMetadata, useForSubtitles;
   final String? baseUrl; // null for built-ins
   final Map<String, AddonResource> resources;
   final List<AddonCatalog> catalogs;

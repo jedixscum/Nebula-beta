@@ -217,7 +217,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
 
   void _reset() {
     _src = null;
-    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.resources.containsKey('catalog'))) {
+    for (final a in ref.read(addonsProvider).where((a) => a.remote && a.enabled && a.showInHome && a.resources.containsKey('catalog'))) {
       for (final c in a.browseCatalogs) {
         if (c.type == _typeStr && _src == null) _src = (a, c);
       }
