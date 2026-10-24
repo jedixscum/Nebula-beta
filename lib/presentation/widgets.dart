@@ -15,8 +15,10 @@ class PosterCard extends StatelessWidget {
   const PosterCard({super.key, required this.item, this.width = 130});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => InkWell(
         onTap: () => context.push('/detail', extra: item),
+        borderRadius: BorderRadius.circular(14),
+        focusColor: nebulaCyan.withOpacity(0.20),
         child: Container(
           width: width,
           margin: const EdgeInsets.only(right: 12),
@@ -82,14 +84,14 @@ class CosmicRow extends StatelessWidget {
           child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: nebulaCyan)),
         ),
         SizedBox(
-          height: 130 * 1.5 + 8,
+          height: (MediaQuery.sizeOf(context).width >= 800 ? 170 : 130) * 1.5 + 8,
           child: items.isEmpty
               ? const Center(child: Text('Nothing here yet', style: TextStyle(color: Colors.white38)))
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.only(left: 16),
                   itemCount: items.length,
-                  itemBuilder: (_, i) => PosterCard(item: items[i])),
+                  itemBuilder: (context, i) => PosterCard(item: items[i], width: MediaQuery.sizeOf(context).width >= 800 ? 170 : 130)),
         ),
       ]);
 }

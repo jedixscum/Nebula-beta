@@ -60,6 +60,10 @@ jobs:
           # 3) app bundle
           flutter build appbundle --release --no-shrink
           cp build/app/outputs/bundle/release/app-release.aab dist/nebula.aab
+          # Build a separate Android TV APK with Leanback launcher support.
+          python3 scripts/setup_android.py --tv
+          flutter build apk --release --no-shrink
+          cp build/app/outputs/flutter-apk/app-release.apk dist/nebula-android-tv.apk
           ls -lh dist
 
       - uses: actions/upload-artifact@v4

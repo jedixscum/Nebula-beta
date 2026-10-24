@@ -38,24 +38,50 @@ class _ShellState extends ConsumerState<Shell> {
       const LibraryPage(),
       const ProfilePage(),
     ];
-    final content = Scaffold(
-        body: SafeArea(child: pages[_i]),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _i,
-          onDestinationSelected: (v) => setState(() => _i = v),
-          destinations: [
-            NavigationDestination(icon: const Icon(Icons.home_outlined), label: t.home),
-            NavigationDestination(icon: const Icon(Icons.movie_outlined), label: t.movies),
-            NavigationDestination(icon: const Icon(Icons.tv), label: t.tvShows),
-            NavigationDestination(icon: const Icon(Icons.bookmarks_outlined), label: t.library),
-            const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
-          ],
+    final tvLayout = MediaQuery.sizeOf(context).width >= 800;
+    return Starfield(
+      enabled: settings.starfieldEnabled,
+      child: Scaffold(
+        body: SafeArea(
+          child: tvLayout
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: _i,
+                      onDestinationSelected: (v) => setState(() => _i = v),
+                      labelType: NavigationRailLabelType.all,
+                      groupAlignment: -0.8,
+                      destinations: [
+                        NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(t.home)),
+                        NavigationRailDestination(icon: const Icon(Icons.movie_outlined), selectedIcon: const Icon(Icons.movie), label: Text(t.movies)),
+                        NavigationRailDestination(icon: const Icon(Icons.tv_outlined), selectedIcon: const Icon(Icons.tv), label: Text(t.tvShows)),
+                        NavigationRailDestination(icon: const Icon(Icons.bookmarks_outlined), selectedIcon: const Icon(Icons.bookmarks), label: Text(t.library)),
+                        const NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1, thickness: 1),
+                    Expanded(child: pages[_i]),
+                  ],
+                )
+              : pages[_i],
         ),
-      );
-    return Starfield(enabled: settings.starfieldEnabled, child: content);
+        bottomNavigationBar: tvLayout
+            ? null
+            : NavigationBar(
+                selectedIndex: _i,
+                onDestinationSelected: (v) => setState(() => _i = v),
+                destinations: [
+                  NavigationDestination(icon: const Icon(Icons.home_outlined), label: t.home),
+                  NavigationDestination(icon: const Icon(Icons.movie_outlined), label: t.movies),
+                  NavigationDestination(icon: const Icon(Icons.tv), label: t.tvShows),
+                  NavigationDestination(icon: const Icon(Icons.bookmarks_outlined), label: t.library),
+                  const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profile'),
+                ],
+              ),
+      ),
+    );
   }
 }
-
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
   @override
@@ -257,7 +283,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
       controller: _sc,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 160, childAspectRatio: 2 / 3, mainAxisSpacing: 12, crossAxisSpacing: 12),
+          maxCrossAxisExtent: MediaQuery.sizeOf(context).width >= 800 ? 220 : 160, childAspectRatio: 2 / 3, mainAxisSpacing: 12, crossAxisSpacing: 12),
       itemCount: _items.length + extra,
       itemBuilder: (_, i) => i < _items.length
           ? PosterCard(item: _items[i], width: double.infinity)

@@ -4,11 +4,12 @@
 Every push to `main` builds everything and publishes a GitHub Release (named "Nebula build N") with:
 - `nebula-universal.apk`: one APK for any phone (easiest to install)
 - `nebula-arm64-v8a.apk`, `nebula-armeabi-v7a.apk`, `nebula-x86_64.apk`: smaller per-architecture builds
-- `nebula.aab`: app bundle
+- `nebula.aab`: phone app bundle
+- `nebula-android-tv.apk`: Android TV build with Leanback launcher entry, TV banner, remote-friendly navigation, and a separate install identity
 
 From your phone: open the repo in a browser, tap Releases, and tap the APK to download and install it.
 The same files are also in the run's `nebula-android` artifact. Push a tag like `v0.1.0` for a non-prerelease.
-APKs are signed with the debug key: fine for sideloading, not for the Play Store.
+The TV APK installs alongside the phone app. APKs are signed with the debug key: fine for sideloading, not for the Play Store.
 If the build fails, the compile error is in the "Build everything" step log.
 
 ## Build locally
@@ -18,8 +19,11 @@ If the build fails, the compile error is in the "Build everything" step log.
     flutter pub get && flutter gen-l10n
     flutter run        # or: flutter build apk --release --split-per-abi
 
-`scripts/setup_android.py` adds the internet permission, cleartext HTTP (some addons use http), PiP support,
-and sets minSdk 24.
+`scripts/setup_android.py` adds internet permission, cleartext HTTP (some addons use http), PiP support,
+and minSdk 24. The workflow also runs `python3 scripts/setup_android.py --tv` to enable Android TV's
+Leanback launcher, non-touchscreen support, a TV banner, and a separate `.tv` application ID. On wide screens,
+Nebula switches to a remote-friendly navigation rail and larger focusable poster cards. In the player, Back exits
+playback; left/right seek while controls are hidden; select/up/down reveal the controls.
 
 ## Player
 media_kit (libmpv): hardware decoding, embedded and external subtitle tracks (srt/vtt/ass), audio-track

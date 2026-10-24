@@ -250,7 +250,34 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final sub = _trLang == null || _subText.isEmpty ? _subText : '[$_trLang] $_subText (mock)';
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
+      body: Focus(
+        autofocus: false,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.goBack || key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.backspace) {
+            context.pop();
+            return KeyEventResult.handled;
+          }
+          if (!_controls) {
+            if (key == LogicalKeyboardKey.arrowLeft) {
+              _skip(const Duration(seconds: -10));
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.arrowRight) {
+              _skip(const Duration(seconds: 10));
+              return KeyEventResult.handled;
+            }
+            if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.select || key == LogicalKeyboardKey.enter ||
+                key == LogicalKeyboardKey.numpadEnter) {
+              setState(() => _controls = true);
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: GestureDetector(
         onTap: () => setState(() => _controls = !_controls),
         child: Stack(fit: StackFit.expand, children: [
           if (_failed)
@@ -277,6 +304,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       ),
                       const SizedBox(height: 20),
                       FilledButton.icon(
+                        autofocus: true,
                         onPressed: _starting ? null : _retryPlayback,
                         icon: const Icon(Icons.refresh),
                         label: Text(_starting ? 'Retrying…' : 'Retry playback'),
@@ -326,6 +354,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           if (_controls) _buildControls(),
         ]),
+        ),
       ),
     );
   }
@@ -335,7 +364,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         child: SafeArea(
           child: Column(children: [
             Row(children: [
-              IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+              IconButton(autofocus: true, icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
               Expanded(child: Text(widget.item.title, overflow: TextOverflow.ellipsis)),
               IconButton(icon: const Icon(Icons.picture_in_picture_alt), tooltip: 'Picture-in-Picture', onPressed: _pip),
               PopupMenuButton<String>(
