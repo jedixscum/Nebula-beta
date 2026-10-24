@@ -3,7 +3,6 @@ import '../domain/addon.dart';
 import '../domain/media_item.dart';
 import 'addon_client.dart';
 import 'providers.dart';
-import 'sample_data.dart';
 
 final addonClientProvider = Provider((_) => AddonClient());
 
@@ -17,60 +16,50 @@ class AddonRow {
   const AddonRow(this.title, this.items);
 }
 
-/// Home rows from installed addons' catalogs (first few per addon).
+/// Home rows are fetched directly from installed add-ons. A failed catalog is
+/// isolated so one broken add-on does not hide content from the others.
 final addonRowsProvider = FutureProvider<List<AddonRow>>((ref) async {
   final addons = ref.watch(addonsProvider);
   final client = ref.read(addonClientProvider);
   final jobs = <Future<AddonRow?>>[];
   for (final a in addons.where((a) => a.remote && a.resources.containsKey('catalog'))) {
-    for (final c in a.browseCatalogs.take(3)) {
+    for (final catalog in a.browseCatalogs) {
       jobs.add(() async {
         try {
-          final items = await client.catalog(a, c.type, c.id);
-          return items.isEmpty ? null : AddonRow('${c.name} · ${a.name}', items);
+          final items = await client.catalog(a, catalog.type, catalog.id);
+          return items.isEmpty ? null : AddonRow('${catalog.name} · ${a.name}', items);
         } catch (_) {
           return null;
         }
       }());
     }
   }
-  return (await Future.wait(jobs)).whereType<AddonRow>().take(8).toList();
+  return (await Future.wait(jobs)).whereType<AddonRow>().take(30).toList();
 });
 
-/// Search across the sample catalog and addon catalogs that support search.
+/// Search is backed only by installed add-ons; no bundled demo catalog is mixed in.
 final searchResultsProvider = FutureProvider<List<MediaItem>>((ref) async {
   final q = ref.watch(queryProvider).trim();
-  final g = ref.watch(genreFilterProvider);
-  final r = ref.watch(minRatingProvider);
-  final y = ref.watch(fromYearProvider);
-  bool ok(MediaItem m) =>
-      m.type != MediaType.live && (g == null || m.genres.contains(g)) && m.rating >= r && m.year >= y;
-  final local = sampleItems
-      .where((m) => ok(m) && (q.isEmpty || m.title.toLowerCase().contains(q.toLowerCase())))
-      .toList();
-  if (q.isEmpty) return local;
+  if (q.isEmpty) return const <MediaItem>[];
 
-  var cancelled = false;
-  ref.onDispose(() => cancelled = true);
-  await Future.delayed(const Duration(milliseconds: 350)); // debounce typing
-  if (cancelled) return local;
-
-  final addons = ref.read(addonsProvider);
+  final addons = ref.watch(addonsProvider);
   final client = ref.read(addonClientProvider);
   final jobs = <Future<List<MediaItem>>>[];
   for (final a in addons.where((a) => a.remote && a.resources.containsKey('catalog'))) {
-    for (final c in a.catalogs.where((c) => c.supportsSearch).take(2)) {
-      jobs.add(client.catalog(a, c.type, c.id, search: q).catchError((_) => <MediaItem>[]));
+    for (final catalog in a.catalogs.where((c) => c.supportsSearch).take(3)) {
+      jobs.add(client.catalog(a, catalog.type, catalog.id, search: q)
+          .catchError((_) => <MediaItem>[]));
     }
   }
-  final seen = {for (final m in local) m.id};
-  final remote = <MediaItem>[];
+
+  final seen = <String>{};
+  final results = <MediaItem>[];
   for (final list in await Future.wait(jobs)) {
-    for (final m in list) {
-      if (ok(m) && seen.add(m.id)) remote.add(m);
+    for (final item in list) {
+      if (item.type != MediaType.live && seen.add(item.id)) results.add(item);
     }
   }
-  return [...local, ...remote];
+  return results;
 });
 
 /// Full metadata (cast, runtime, episodes) from the first addon that serves it.
