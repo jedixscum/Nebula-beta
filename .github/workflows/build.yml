@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Stamp build version
+        run: sed -i "s/^version:.*/version: 0.1.0+${{ github.run_number }}/" pubspec.yaml
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -71,13 +74,14 @@ jobs:
           name: nebula-android
           path: dist/*
 
-      # Publishes a Release with every file, so you can tap the APK to download it from your phone.
+      # Publishes a Release with every file. The in-app updater reads these releases.
       - name: Publish release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build-{0}', github.run_number) }}
-          name: Nebula ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('build {0}', github.run_number) }}
+          name: Nebula ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('beta build {0}', github.run_number) }}
           target_commitish: ${{ github.sha }}
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          generate_release_notes: true
           files: dist/*
