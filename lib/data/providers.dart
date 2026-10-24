@@ -7,18 +7,12 @@ import 'addon_client.dart';
 
 final queryProvider = StateProvider<String>((_) => '');
 
-/// Library: full item JSON per id (so addon titles survive restarts).
 class LibraryNotifier extends StateNotifier<Set<String>> {
   final Box<String> _box = Hive.box<String>('library');
   LibraryNotifier() : super(Hive.box<String>('library').keys.cast<String>().toSet());
   void toggle(MediaItem m) {
-    if (state.contains(m.id)) {
-      _box.delete(m.id);
-      state = {...state}..remove(m.id);
-    } else {
-      _box.put(m.id, jsonEncode(m.toJson()));
-      state = {...state, m.id};
-    }
+    if (state.contains(m.id)) { _box.delete(m.id); state = {...state}..remove(m.id); }
+    else { _box.put(m.id, jsonEncode(m.toJson())); state = {...state, m.id}; }
   }
 }
 final libraryProvider = StateNotifierProvider<LibraryNotifier, Set<String>>((_) => LibraryNotifier());
@@ -26,23 +20,13 @@ final libraryProvider = StateNotifierProvider<LibraryNotifier, Set<String>>((_) 
 MediaItem? _fromLibraryBox(String id) {
   final v = Hive.box<String>('library').get(id);
   if (v == null) return null;
-  try {
-    return MediaItem.fromJson(jsonDecode(v) as Map<String, dynamic>);
-  } catch (_) {
-    return null; // legacy entry
-  }
+  try { return MediaItem.fromJson(jsonDecode(v) as Map<String, dynamic>); } catch (_) { return null; }
 }
-
-/// Resolve titles saved in the local library, including add-on metadata.
 MediaItem? resolveItem(String id) => _fromLibraryBox(id);
-
 final libraryItemsProvider = Provider<List<MediaItem>>((ref) {
   ref.watch(libraryProvider);
   final out = <MediaItem>[];
-  for (final k in Hive.box<String>('library').keys.cast<String>()) {
-    final m = _fromLibraryBox(k);
-    if (m != null) out.add(m);
-  }
+  for (final k in Hive.box<String>('library').keys.cast<String>()) { final m = _fromLibraryBox(k); if (m != null) out.add(m); }
   return out;
 });
 
@@ -60,6 +44,12 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
             ? Addon.fromManifest(Map<String, dynamic>.from(j['manifest'] as Map), baseUrl: j['base'] as String?)
             : Addon.fromManifest(j);
         final s = j['settings'] is Map ? Map<String, dynamic>.from(j['settings'] as Map) : <String, dynamic>{};
+        final cs = <String, Map<String, dynamic>>{};
+        if (s['catalogs'] is Map) {
+          for (final e in (s['catalogs'] as Map).entries) {
+            if (e.value is Map) cs[e.key.toString()] = Map<String, dynamic>.from(e.value as Map);
+          }
+        }
         out.add(a.copyWithSettings(
           enabled: s['enabled'] is bool ? s['enabled'] as bool : true,
           showInHome: s['showInHome'] is bool ? s['showInHome'] as bool : true,
@@ -67,51 +57,44 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
           useForStreams: s['useForStreams'] is bool ? s['useForStreams'] as bool : true,
           useForMetadata: s['useForMetadata'] is bool ? s['useForMetadata'] as bool : true,
           useForSubtitles: s['useForSubtitles'] is bool ? s['useForSubtitles'] as bool : true,
+          catalogSettings: cs,
         ));
-      } catch (_) {/* skip corrupt entry */}
+      } catch (_) {}
     }
     return out;
   }
 
   void _store(Addon a) {
-    _box.put(a.id, jsonEncode({
-      'base': a.baseUrl,
-      'manifest': a.raw,
-      'settings': {
-        'enabled': a.enabled,
-        'showInHome': a.showInHome,
-        'includeInSearch': a.includeInSearch,
-        'useForStreams': a.useForStreams,
-        'useForMetadata': a.useForMetadata,
-        'useForSubtitles': a.useForSubtitles,
-      },
-    }));
+    _box.put(a.id, jsonEncode({'base': a.baseUrl, 'manifest': a.raw, 'settings': {
+      'enabled': a.enabled, 'showInHome': a.showInHome, 'includeInSearch': a.includeInSearch,
+      'useForStreams': a.useForStreams, 'useForMetadata': a.useForMetadata, 'useForSubtitles': a.useForSubtitles,
+      'catalogs': {for (final c in a.catalogs) c.id: {'showInHome': c.showInHome, 'order': c.order}},
+    }}));
     final next = [...state];
     final index = next.indexWhere((e) => e.id == a.id);
-    if (index >= 0) {
-      next[index] = a;
-    } else {
-      next.add(a);
-    }
+    if (index >= 0) next[index] = a; else next.add(a);
     state = next;
   }
 
-  /// Change a single add-on preference without modifying its manifest.
-  void updateSettings(String id, {
-    bool? enabled, bool? showInHome, bool? includeInSearch,
-    bool? useForStreams, bool? useForMetadata, bool? useForSubtitles,
-  }) {
-    Addon? current;
-    for (final a in state) { if (a.id == id) { current = a; break; } }
+  void updateSettings(String id, {bool? enabled, bool? showInHome, bool? includeInSearch,
+      bool? useForStreams, bool? useForMetadata, bool? useForSubtitles}) {
+    final current = state.where((e) => e.id == id).firstOrNull;
     if (current == null) return;
-    _store(current.copyWithSettings(
-      enabled: enabled, showInHome: showInHome, includeInSearch: includeInSearch,
-      useForStreams: useForStreams, useForMetadata: useForMetadata,
-      useForSubtitles: useForSubtitles,
-    ));
+    _store(current.copyWithSettings(enabled: enabled, showInHome: showInHome, includeInSearch: includeInSearch,
+      useForStreams: useForStreams, useForMetadata: useForMetadata, useForSubtitles: useForSubtitles));
   }
 
-  /// Install from a manifest URL (https://, or the stremio:// form). Throws on failure.
+  void updateCatalogSettings(String addonId, String catalogId, {bool? showInHome, int? order}) {
+    final current = state.where((e) => e.id == addonId).firstOrNull;
+    if (current == null) return;
+    final settings = {for (final c in current.catalogs) c.id: {'showInHome': c.showInHome, 'order': c.order}};
+    settings[catalogId] = {
+      'showInHome': showInHome ?? (settings[catalogId]?['showInHome'] as bool? ?? true),
+      'order': order ?? (settings[catalogId]?['order'] as int? ?? 0),
+    };
+    _store(current.copyWithSettings(catalogSettings: settings));
+  }
+
   Future<Addon> installFromUrl(String input) async {
     var u = input.trim();
     if (u.startsWith('stremio://')) u = 'https://${u.substring(10)}';
@@ -119,26 +102,22 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
     if (!u.endsWith('/manifest.json')) u = u.endsWith('/') ? '${u}manifest.json' : '$u/manifest.json';
     final base = u.substring(0, u.length - '/manifest.json'.length);
     var a = Addon.fromManifest(await _client.manifest(u), baseUrl: base);
-    // Refreshing an add-on should not reset the user's choices.
-    for (final old in state.where((e) => e.id == a.id)) {
-      a = a.copyWithSettings(
-        enabled: old.enabled, showInHome: old.showInHome,
-        includeInSearch: old.includeInSearch, useForStreams: old.useForStreams,
-        useForMetadata: old.useForMetadata, useForSubtitles: old.useForSubtitles,
-      );
-      break;
+    final old = state.where((e) => e.id == a.id).firstOrNull;
+    if (old != null) {
+      final settings = {for (final c in old.catalogs) c.id: {'showInHome': c.showInHome, 'order': c.order}};
+      a = a.copyWithSettings(enabled: old.enabled, showInHome: old.showInHome, includeInSearch: old.includeInSearch,
+        useForStreams: old.useForStreams, useForMetadata: old.useForMetadata, useForSubtitles: old.useForSubtitles,
+        catalogSettings: settings);
     }
     _store(a);
     return a;
   }
 
-  /// Install from pasted manifest JSON (no network resources).
   void installManifest(String json) => _store(Addon.fromManifest(jsonDecode(json) as Map<String, dynamic>));
-
   void remove(String id) {
-    if (state.firstWhere((e) => e.id == id).builtIn) return;
-    _box.delete(id);
-    state = state.where((e) => e.id != id).toList();
+    final a = state.where((e) => e.id == id).firstOrNull;
+    if (a == null || a.builtIn) return;
+    _box.delete(id); state = state.where((e) => e.id != id).toList();
   }
 }
 final addonsProvider = StateNotifierProvider<AddonNotifier, List<Addon>>((_) => AddonNotifier());
