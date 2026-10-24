@@ -7,10 +7,7 @@ void main() {
   const manifest = {
     'id': 'org.example.streams', 'name': 'Example', 'version': '1.0.0',
     'types': ['movie', 'series'], 'idPrefixes': ['tt'],
-    'resources': [
-      'catalog',
-      {'name': 'stream', 'types': ['movie'], 'idPrefixes': ['tt']},
-    ],
+    'resources': ['catalog', {'name': 'stream', 'types': ['movie'], 'idPrefixes': ['tt']}],
     'catalogs': [
       {'type': 'movie', 'id': 'top', 'name': 'Top', 'extra': [{'name': 'skip'}]},
       {'type': 'movie', 'id': 'search', 'extra': [{'name': 'search', 'isRequired': true}]},
@@ -20,10 +17,10 @@ void main() {
   test('manifest parses resources and catalogs', () {
     final a = Addon.fromManifest(manifest, baseUrl: 'https://x.test/cfg');
     expect(a.remote, isTrue);
-    expect(a.browseCatalogs.map((c) => c.id), ['top']); // search-only catalog excluded
+    expect(a.browseCatalogs.map((c) => c.id), ['top']);
     expect(a.catalogs.last.supportsSearch, isTrue);
     expect(a.supports('stream', 'movie', 'tt123'), isTrue);
-    expect(a.supports('stream', 'series', 'tt123'), isFalse); // resource limits types
+    expect(a.supports('stream', 'series', 'tt123'), isFalse);
     expect(a.supports('stream', 'movie', 'kitsu:1'), isFalse);
   });
 
@@ -36,31 +33,44 @@ void main() {
     expect(customized.useForStreams, isFalse);
     expect(customized.useForMetadata, isTrue);
     expect(customized.useForSubtitles, isTrue);
-    expect(a.showInHome, isTrue); // original remains immutable
+    expect(a.showInHome, isTrue);
   });
 
-  test('manifest without id throws', () {
+  test('catalog preferences hide and reorder Home catalogs', () {
+    final a = Addon.fromManifest({
+      ...manifest,
+      'catalogs': [
+        {'type': 'movie', 'id': 'one', 'name': 'One'},
+        {'type': 'movie', 'id': 'two', 'name': 'Two'},
+        {'type': 'movie', 'id': 'three', 'name': 'Three'},
+      ],
+    });
+    final customized = a.copyWithSettings(catalogSettings: {
+      'one': {'showInHome': true, 'order': 2},
+      'two': {'showInHome': false, 'order': 1},
+      'three': {'showInHome': true, 'order': 0},
+    });
+    expect(customized.browseCatalogs.map((c) => c.id), ['three', 'one']);
+    expect(customized.catalogs.first.id, 'three');
+    expect(customized.catalogs[1].showInHome, isFalse);
+  });
+
+  test('manifest without id throws', () => {
     expect(() => Addon.fromManifest({'name': 'X'}), throwsFormatException);
   });
 
   test('parseStreams keeps only direct http links and proxy headers', () {
-    final s = parseStreams('A', {
-      'streams': [
-        {'url': 'https://cdn.test/a.mkv', 'name': 'RD 1080p', 'title': 'Movie\n2GB',
-          'behaviorHints': {'proxyHeaders': {'request': {'User-Agent': 'x'}}},
-          'subtitles': [{'url': 'https://s.test/en.srt', 'lang': 'eng'}]},
-        {'infoHash': 'abc'}, // torrent-only: not playable without debrid
-        {'url': 'magnet:?xt=urn:btih:abc'},
-      ]
-    });
+    final s = parseStreams('A', {'streams': [
+      {'url': 'https://cdn.test/a.mkv', 'name': 'RD 1080p', 'title': 'Movie\n2GB', 'behaviorHints': {'proxyHeaders': {'request': {'User-Agent': 'x'}}}, 'subtitles': [{'url': 'https://s.test/en.srt', 'lang': 'eng'}]},
+      {'infoHash': 'abc'}, {'url': 'magnet:?xt=urn:btih:abc'},
+    ]});
     expect(s.length, 1);
     expect(s.first.headers, {'User-Agent': 'x'});
     expect(s.first.subtitles.single.lang, 'eng');
   });
 
   test('metaToItem maps addon meta', () {
-    final m = metaToItem({'id': 'tt1', 'type': 'series', 'name': 'Show', 'releaseInfo': '2019–2022',
-      'imdbRating': '8.1', 'runtime': '45 min', 'genres': ['Drama'], 'poster': 'https://p.test/p.jpg'});
+    final m = metaToItem({'id': 'tt1', 'type': 'series', 'name': 'Show', 'releaseInfo': '2019–2022', 'imdbRating': '8.1', 'runtime': '45 min', 'genres': ['Drama'], 'poster': 'https://p.test/p.jpg'});
     expect(m.type, MediaType.show);
     expect(m.typeStr, 'series');
     expect(m.year, 2019);
