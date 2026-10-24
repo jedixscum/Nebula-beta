@@ -9,8 +9,6 @@ import '../data/catalog.dart';
 import '../data/history_store.dart';
 import '../data/home_layout.dart';
 import '../data/providers.dart';
-import '../data/recommender.dart';
-import '../data/sample_data.dart';
 import '../data/theme_settings.dart';
 import '../data/sync_service.dart';
 import '../domain/addon.dart';
@@ -90,7 +88,6 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   final _ctrl = TextEditingController();
-  static const _genres = ['Animation', 'Comedy', 'Sci-Fi', 'Fantasy'];
 
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
@@ -98,103 +95,81 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final q0 = ref.watch(queryProvider);
+    final query = ref.watch(queryProvider).trim();
     final results = ref.watch(searchResultsProvider);
-    final lib = ref.watch(libraryProvider);
-    final libItems = ref.watch(libraryItemsProvider);
-    final rows = q0.isEmpty ? ref.watch(addonRowsProvider).valueOrNull ?? const <AddonRow>[] : const <AddonRow>[];
+    final addonRows = ref.watch(addonRowsProvider);
+    final addons = ref.watch(addonsProvider);
+    final library = ref.watch(libraryItemsProvider);
+    final favorites = ref.watch(favoritesItemsProvider);
     final layout = ref.watch(homeLayoutProvider);
     final collections = ref.watch(catalogProvider);
-    final q = q0;
-    final genre = ref.watch(genreFilterProvider);
-    final minRating = ref.watch(minRatingProvider);
-    final fromYear = ref.watch(fromYearProvider);
-    final suggestions = q.isEmpty
-        ? <MediaItem>[]
-        : sampleItems.where((m) => m.type != MediaType.live && m.title.toLowerCase().contains(q.toLowerCase())).take(4).toList();
+    final history = HistoryStore().all();
+    final continueWatching = history
+        .where((e) => e.durMs > 0 && e.posMs < e.durMs * 0.92)
+        .map((e) => resolveItem(e.id))
+        .whereType<MediaItem>()
+        .toList();
+
+    Widget empty(String message) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 36),
+      child: Center(child: Text(message, textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70))),
+    );
+
+    List<Widget> personalSections() {
+      final out = <Widget>[];
+      for (final section in layout.where((s) => s.visible)) {
+        final items = switch (section.key) {
+          'library' => library,
+          'continue' => continueWatching,
+          'favorites' => favorites,
+          _ => const <MediaItem>[],
+        };
+        if (items.isNotEmpty) {
+          out.add(CosmicRow(title: homeSectionTitles[section.key]!, items: items));
+        }
+      }
+      for (final collection in collections) {
+        final items = [for (final id in collection.itemIds) if (resolveItem(id) != null) resolveItem(id)!];
+        if (items.isNotEmpty) out.add(CosmicRow(title: collection.name, items: items));
+      }
+      return out;
+    }
 
     return ListView(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
         child: SearchBar(
           controller: _ctrl,
           hintText: t.search,
           leading: const Icon(Icons.search),
-          onChanged: (v) => ref.read(queryProvider.notifier).state = v,
+          onChanged: (value) => ref.read(queryProvider.notifier).state = value,
         ),
       ),
-      if (suggestions.isNotEmpty && !suggestions.any((s) => s.title.toLowerCase() == q.toLowerCase()))
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-            for (final s in suggestions)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ActionChip(
-                  label: Text(s.title),
-                  onPressed: () {
-                    _ctrl.text = s.title;
-                    ref.read(queryProvider.notifier).state = s.title;
-                  },
-                ),
-              ),
-          ]),
+      if (query.isNotEmpty)
+        results.when(
+          loading: () => const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())),
+          error: (error, _) => empty('Search failed: $error'),
+          data: (items) => items.isEmpty
+              ? empty('No results from your installed add-ons. Make sure an add-on supports catalog search.')
+              : Column(children: [CosmicRow(title: 'Search results', items: items)]),
+        )
+      else ...[
+        ...personalSections(),
+        addonRows.when(
+          loading: () => addons.any((a) => a.remote && a.resources.containsKey('catalog'))
+              ? const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
+              : empty('Your Home is ready for add-ons. Open Profile → Addons and install an add-on with movie or series catalogs.'),
+          error: (error, _) => empty('Could not load add-on catalogs: $error'),
+          data: (rows) => rows.isEmpty
+              ? empty(addons.any((a) => a.remote && a.resources.containsKey('catalog'))
+                  ? 'Your installed add-ons did not return any catalog titles.'
+                  : 'Install an add-on with movie or series catalogs in Profile → Addons to populate Home.')
+              : Column(children: [
+                  for (final row in rows) CosmicRow(title: row.title, items: row.items),
+                ]),
         ),
-      SizedBox(
-        height: 48,
-        child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-          for (final g in _genres)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(g),
-                selected: genre == g,
-                onSelected: (s) => ref.read(genreFilterProvider.notifier).state = s ? g : null,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: const Text('7+ rating'),
-              selected: minRating >= 7,
-              onSelected: (s) => ref.read(minRatingProvider.notifier).state = s ? 7 : 0,
-            ),
-          ),
-          FilterChip(
-            label: const Text('Since 2010'),
-            selected: fromYear >= 2010,
-            onSelected: (s) => ref.read(fromYearProvider.notifier).state = s ? 2010 : 0,
-          ),
-        ]),
-      ),
-      results.when(
-        loading: () => const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator())),
-        error: (e, _) => Padding(padding: const EdgeInsets.all(16), child: Text('Search failed: $e')),
-        data: (items) {
-          if (items.isEmpty) {
-            return const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('No titles match these filters.')));
-          }
-          List<MediaItem> rowFor(String key) {
-            switch (key) {
-              case 'rec': return recommend(lib, items).take(8).toList();
-              case 'popular': return items.reversed.toList();
-              case 'new': return ([...items]..sort((a, b) => b.year.compareTo(a.year)));
-              case 'top': return ([...items]..sort((a, b) => b.rating.compareTo(a.rating)));
-              case 'library': return libItems;
-              case 'continue': return HistoryStore().all().where((e) => e.durMs > 0 && e.posMs < e.durMs * 0.92).map((e) => resolveItem(e.id)).whereType<MediaItem>().toList();
-              case 'favorites': return ref.watch(favoritesItemsProvider);
-              default: return items;
-            }
-          }
-          return Column(children: [
-            for (final s in layout)
-              if (s.visible) CosmicRow(title: homeSectionTitles[s.key]!, items: rowFor(s.key)),
-            for (final r in rows) CosmicRow(title: r.title, items: r.items),
-            for (final c in collections)
-              CosmicRow(title: c.name, items: [for (final id in c.itemIds) if (resolveItem(id) != null) resolveItem(id)!]),
-          ]);
-        },
-      ),
+      ],
     ]);
   }
 }
@@ -277,7 +252,7 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
 
   @override
   Widget build(BuildContext context) {
-    if (_src == null) return _PosterGrid(items: sampleItems.where((m) => m.type == widget.type).toList());
+    if (_src == null) return const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No catalog available. Install an add-on that provides movie or series catalogs.')));
     final extra = _loading ? 6 : 0;
     return GridView.builder(
       controller: _sc,
