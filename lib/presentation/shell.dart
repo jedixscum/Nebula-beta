@@ -31,8 +31,8 @@ class _ShellState extends ConsumerState<Shell> {
     final settings = ref.watch(themeSettingsProvider);
     final pages = <Widget>[
       const HomePage(),
-      const CatalogGrid(type: MediaType.movie),
-      const CatalogGrid(type: MediaType.show),
+      const CatalogGrid(key: ValueKey('movies-catalog'), type: MediaType.movie),
+      const CatalogGrid(key: ValueKey('shows-catalog'), type: MediaType.show),
       const LibraryPage(),
       const ProfilePage(),
     ];
@@ -184,8 +184,7 @@ class LibraryPage extends ConsumerWidget {
   }
 }
 
-/// Movies / TV grid: infinite-scrolling addon catalog (skip paging) with shimmer,
-/// falling back to the built-in sample titles when no catalog addon is installed.
+/// Movies / TV grid: infinite-scrolling addon catalog (skip paging) with shimmer.
 class CatalogGrid extends ConsumerStatefulWidget {
   final MediaType type;
   const CatalogGrid({super.key, required this.type});
@@ -210,6 +209,14 @@ class _CatalogGridState extends ConsumerState<CatalogGrid> {
       if (_sc.hasClients && _sc.position.pixels > _sc.position.maxScrollExtent - 400) _load();
     });
     ref.listenManual(addonsProvider, (_, __) => _reset(), fireImmediately: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant CatalogGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.type != widget.type) {
+      _reset();
+    }
   }
 
   @override
