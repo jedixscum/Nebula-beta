@@ -1,14 +1,22 @@
 # Nebula (Android-first Flutter)
 
 ## Build with GitHub Actions
-Every push to `main` builds everything and publishes a GitHub Release (named "Nebula build N") with:
+Every push to `main` builds everything and publishes a GitHub Release (named "Nebula beta build N") with:
 - `nebula-universal.apk`: one APK for any phone (easiest to install)
 - `nebula-arm64-v8a.apk`, `nebula-armeabi-v7a.apk`, `nebula-x86_64.apk`: smaller per-architecture builds
 - `nebula.aab`: phone app bundle
 - `nebula-android-tv.apk`: Android TV build with Leanback launcher entry, TV banner, remote-friendly navigation, and a separate install identity
 
-From your phone: open the repo in a browser, tap Releases, and tap the APK to download and install it.
-The same files are also in the run's `nebula-android` artifact. Push a tag like `v0.1.0` for a non-prerelease.
+The build stamps the Android version code from the GitHub Actions run number. This lets Nebula detect newer beta builds and update the existing installation in place.
+
+## In-app updater
+Profile → **Nebula Updates** checks the latest GitHub release for the correct phone or Android TV APK, downloads it with progress, and launches Android's package installer without uninstalling Nebula. App data remains in place, including add-ons, favorites, history, catalog customization, themes and layout.
+
+Because the source repository is private, the updater accepts an optional read-only GitHub token and stores it in Android secure storage. A public repository/release feed can be used later without a token. Android may ask once for permission to let Nebula install packages from this source.
+
+There is also an **Install APK manually** action in the same screen for sideloaded builds; it installs over the current app instead of requiring an uninstall.
+
+From your phone: open the repo in a browser, tap Releases, and tap the APK to download and install it. The same files are also in the run's `nebula-android` artifact. Push a tag like `v0.1.0` for a non-prerelease.
 The TV APK installs alongside the phone app. APKs are signed with the debug key: fine for sideloading, not for the Play Store.
 If the build fails, the compile error is in the "Build everything" step log.
 
@@ -19,7 +27,7 @@ If the build fails, the compile error is in the "Build everything" step log.
     flutter pub get && flutter gen-l10n
     flutter run        # or: flutter build apk --release --split-per-abi
 
-`scripts/setup_android.py` adds internet permission, cleartext HTTP (some addons use http), PiP support,
+`scripts/setup_android.py` adds internet permission, APK install permission, secure FileProvider support, cleartext HTTP (some addons use http), PiP support,
 and minSdk 24. The workflow also runs `python3 scripts/setup_android.py --tv` to enable Android TV's
 Leanback launcher, non-touchscreen support, a TV banner, and a separate `.tv` application ID. On wide screens,
 Nebula switches to a remote-friendly navigation rail and larger focusable poster cards. In the player, Back exits
@@ -36,10 +44,10 @@ torrent-only (infoHash/magnet) results are hidden. Installed addon URLs are stor
 and may contain your debrid key, so don't share backups or sync files that include them. (Sync export does not include addons.)
 
 ## Implemented
-Home with reorderable sections, addon catalog rows, filters, mock CF recommendations, infinite-scroll Movies/TV
-(shimmer), Live TV with mock EPG, detail pages with episodes and stream picker, resume playback, online subtitle
-search via addons, neon subtitle style with mock translation, resumable downloads + offline playback, watch
-history/profile stats, catalog builder, JSON sync export/import, Nebula Lens, stats overlay, skip-intro (sample metadata only).
+Home with reorderable sections, addon catalog rows, per-catalog customization, full catalog browser with search/filter/sort, infinite-scroll Movies/TV,
+shimmer, detail pages with episodes and stream picker, resume playback, online subtitle search via addons,
+neon subtitle style with mock translation, resumable downloads + offline playback, watch history/profile stats,
+catalog builder, JSON sync export/import, cinematic Nebula launch screen, and in-app beta updater.
 
 ## Not built
 Chromecast/AirPlay and screen mirroring (dropped), built-in torrent engine (use addons + debrid), original-language
