@@ -3,11 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 const homeSectionTitles = {
-  'trending': 'Trending',
-  'rec': 'AI Nebula Recommendations',
-  'popular': 'Popular',
-  'new': 'New Releases',
-  'top': 'Top Rated',
   'library': 'My Watchlist',
   'continue': 'Continue Watching',
   'favorites': 'Favorites',
