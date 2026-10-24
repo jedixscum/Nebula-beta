@@ -344,6 +344,7 @@ class ProfilePage extends ConsumerWidget {
         },
       ),
       const Divider(),
+      ListTile(leading: const Icon(Icons.rocket_launch_rounded), title: const Text('Nebula Updates'), subtitle: const Text('Check and install new builds without uninstalling'), onTap: () => context.push('/updates')),
       ListTile(leading: const Icon(Icons.extension), title: const Text('Addons'), onTap: () => context.push('/addons')),
       ListTile(leading: const Icon(Icons.download), title: const Text('Downloads'), onTap: () => context.push('/downloads')),
       ListTile(leading: const Icon(Icons.library_add), title: const Text('Catalog builder'), onTap: () => context.push('/catalog')),
