@@ -13,7 +13,9 @@ final fromYearProvider = StateProvider<int>((_) => 0);
 class AddonRow {
   final String title;
   final List<MediaItem> items;
-  const AddonRow(this.title, this.items);
+  final Addon addon;
+  final AddonCatalog catalog;
+  const AddonRow(this.title, this.items, this.addon, this.catalog);
 }
 
 /// Home rows are fetched directly from installed add-ons. A failed catalog is
@@ -27,7 +29,7 @@ final addonRowsProvider = FutureProvider<List<AddonRow>>((ref) async {
       jobs.add(() async {
         try {
           final items = await client.catalog(a, catalog.type, catalog.id);
-          return items.isEmpty ? null : AddonRow('${catalog.name} · ${a.name}', items);
+          return items.isEmpty ? null : AddonRow('${catalog.name} · ${a.name}', items, a, catalog);
         } catch (_) {
           return null;
         }
