@@ -15,6 +15,7 @@ import '../domain/addon.dart';
 import '../domain/media_item.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
+import 'catalog_browser_screen.dart';
 
 class Shell extends ConsumerStatefulWidget {
   const Shell({super.key});
@@ -80,6 +81,7 @@ class _ShellState extends ConsumerState<Shell> {
     );
   }
 }
+
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
   @override
@@ -166,7 +168,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ? 'Your installed add-ons did not return any catalog titles.'
                   : 'Install an add-on with movie or series catalogs in Profile → Addons to populate Home.')
               : Column(children: [
-                  for (final row in rows) CosmicRow(title: row.title, items: row.items),
+                  for (final row in rows)
+                    CosmicRow(
+                      title: row.title,
+                      items: row.items,
+                      onSeeAll: () => context.push('/catalog-browser', extra: CatalogBrowserArgs(row.addon, row.catalog)),
+                    ),
                 ]),
         ),
       ],
