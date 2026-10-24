@@ -14,6 +14,7 @@ import 'presentation/player_screen.dart';
 import 'presentation/addons_screen.dart';
 import 'presentation/library_tools.dart';
 import 'presentation/widgets.dart';
+import 'presentation/catalog_browser_screen.dart';
 
 final _router = GoRouter(routes: [
   GoRoute(path: '/', builder: (_, __) => const Shell()),
@@ -25,6 +26,7 @@ final _router = GoRouter(routes: [
   GoRoute(path: '/layout', builder: (_, __) => const SubPage(title: 'Home layout', child: HomeLayoutScreen())),
   GoRoute(path: '/appearance', builder: (_, __) => const SubPage(title: 'Appearance & themes', child: AppearanceScreen())),
   GoRoute(path: '/favorites', builder: (_, __) => const SubPage(title: 'Favorites', child: FavoritesScreen())),
+  GoRoute(path: '/catalog-browser', builder: (_, s) => CatalogBrowserScreen(args: s.extra as CatalogBrowserArgs)),
 ]);
 
 class FavoritesScreen extends ConsumerWidget {
