@@ -4,7 +4,6 @@ import 'package:hive/hive.dart';
 import '../domain/addon.dart';
 import '../domain/media_item.dart';
 import 'addon_client.dart';
-import 'sample_data.dart';
 
 final queryProvider = StateProvider<String>((_) => '');
 
@@ -34,30 +33,23 @@ MediaItem? _fromLibraryBox(String id) {
   }
 }
 
-/// Sample catalog first, then anything saved in the library.
-MediaItem? resolveItem(String id) => findItem(id) ?? _fromLibraryBox(id);
+/// Resolve titles saved in the local library, including add-on metadata.
+MediaItem? resolveItem(String id) => _fromLibraryBox(id);
 
 final libraryItemsProvider = Provider<List<MediaItem>>((ref) {
   ref.watch(libraryProvider);
   final out = <MediaItem>[];
   for (final k in Hive.box<String>('library').keys.cast<String>()) {
-    final m = _fromLibraryBox(k) ?? findItem(k);
+    final m = _fromLibraryBox(k);
     if (m != null) out.add(m);
   }
   return out;
 });
 
-const builtInAddons = [
-  Addon(id: 'local', name: 'Local Media', version: '1.0.0', types: ['movie', 'series'],
-      description: 'Play mp4/mkv from device storage.', builtIn: true),
-  Addon(id: 'demo', name: 'Demo Streams', version: '1.0.0', types: ['movie', 'series'],
-      description: 'Public sample videos.', builtIn: true),
-];
-
 class AddonNotifier extends StateNotifier<List<Addon>> {
   final Box<String> _box = Hive.box<String>('addons');
   final _client = AddonClient();
-  AddonNotifier() : super([...builtInAddons, ..._stored()]);
+  AddonNotifier() : super(_stored());
 
   static List<Addon> _stored() {
     final out = <Addon>[];
