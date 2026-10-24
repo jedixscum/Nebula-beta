@@ -86,7 +86,14 @@ class AddonNotifier extends StateNotifier<List<Addon>> {
         'useForSubtitles': a.useForSubtitles,
       },
     }));
-    state = [...state.where((e) => e.id != a.id), a];
+    final next = [...state];
+    final index = next.indexWhere((e) => e.id == a.id);
+    if (index >= 0) {
+      next[index] = a;
+    } else {
+      next.add(a);
+    }
+    state = next;
   }
 
   /// Change a single add-on preference without modifying its manifest.

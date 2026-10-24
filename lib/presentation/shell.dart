@@ -157,7 +157,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       else ...[
         ...personalSections(),
         addonRows.when(
-          loading: () => addons.any((a) => a.remote && a.resources.containsKey('catalog'))
+          loading: () => addons.any((a) => a.remote && a.enabled && a.showInHome && a.resources.containsKey('catalog'))
               ? const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
               : empty('Your Home is ready for add-ons. Open Profile → Addons and install an add-on with movie or series catalogs.'),
           error: (error, _) => empty('Could not load add-on catalogs: $error'),
