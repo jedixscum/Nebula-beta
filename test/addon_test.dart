@@ -4,13 +4,35 @@ import 'package:nebula/domain/addon.dart';
 import 'package:nebula/domain/media_item.dart';
 
 void main() {
-  const manifest = {
-    'id': 'org.example.streams', 'name': 'Example', 'version': '1.0.0',
-    'types': ['movie', 'series'], 'idPrefixes': ['tt'],
-    'resources': ['catalog', {'name': 'stream', 'types': ['movie'], 'idPrefixes': ['tt']}],
-    'catalogs': [
-      {'type': 'movie', 'id': 'top', 'name': 'Top', 'extra': [{'name': 'skip'}]},
-      {'type': 'movie', 'id': 'search', 'extra': [{'name': 'search', 'isRequired': true}]},
+  final manifest = <String, dynamic>{
+    'id': 'org.example.streams',
+    'name': 'Example',
+    'version': '1.0.0',
+    'types': <String>['movie', 'series'],
+    'idPrefixes': <String>['tt'],
+    'resources': <dynamic>[
+      'catalog',
+      <String, dynamic>{
+        'name': 'stream',
+        'types': <String>['movie'],
+        'idPrefixes': <String>['tt'],
+      },
+    ],
+    'catalogs': <dynamic>[
+      <String, dynamic>{
+        'type': 'movie',
+        'id': 'top',
+        'name': 'Top',
+        'extra': <dynamic>[<String, dynamic>{'name': 'skip'}],
+      },
+      <String, dynamic>{
+        'type': 'movie',
+        'id': 'search',
+        'name': 'Search',
+        'extra': <dynamic>[
+          <String, dynamic>{'name': 'search', 'isRequired': true},
+        ],
+      },
     ],
   };
 
@@ -26,7 +48,10 @@ void main() {
 
   test('add-on preferences default on and can be changed independently', () {
     final a = Addon.fromManifest(manifest, baseUrl: 'https://x.test');
-    final customized = a.copyWithSettings(showInHome: false, useForStreams: false);
+    final customized = a.copyWithSettings(
+      showInHome: false,
+      useForStreams: false,
+    );
     expect(customized.enabled, isTrue);
     expect(customized.showInHome, isFalse);
     expect(customized.includeInSearch, isTrue);
@@ -37,44 +62,73 @@ void main() {
   });
 
   test('catalog preferences hide and reorder Home catalogs', () {
-    final a = Addon.fromManifest({
+    final customized = Addon.fromManifest({
       ...manifest,
-      'catalogs': [
-        {'type': 'movie', 'id': 'one', 'name': 'One'},
-        {'type': 'movie', 'id': 'two', 'name': 'Two'},
-        {'type': 'movie', 'id': 'three', 'name': 'Three'},
+      'catalogs': <dynamic>[
+        <String, dynamic>{'type': 'movie', 'id': 'one', 'name': 'One'},
+        <String, dynamic>{'type': 'movie', 'id': 'two', 'name': 'Two'},
+        <String, dynamic>{'type': 'movie', 'id': 'three', 'name': 'Three'},
       ],
-    });
-    final customized = a.copyWithSettings(catalogSettings: {
-      'one': {'showInHome': true, 'order': 2},
-      'two': {'showInHome': false, 'order': 1},
-      'three': {'showInHome': true, 'order': 0},
-    });
+    }).copyWithSettings(
+      catalogSettings: <String, dynamic>{
+        'one': <String, dynamic>{'showInHome': true, 'order': 2},
+        'two': <String, dynamic>{'showInHome': false, 'order': 1},
+        'three': <String, dynamic>{'showInHome': true, 'order': 0},
+      },
+    );
+
     expect(customized.browseCatalogs.map((c) => c.id), ['three', 'one']);
     expect(customized.catalogs.first.id, 'three');
     expect(customized.catalogs[1].showInHome, isFalse);
   });
 
-  test('manifest without id throws', () => {
-    expect(() => Addon.fromManifest({'name': 'X'}), throwsFormatException);
+  test('manifest without id throws', () {
+    expect(
+      () => Addon.fromManifest(<String, dynamic>{'name': 'X'}),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test('parseStreams keeps only direct http links and proxy headers', () {
-    final s = parseStreams('A', {'streams': [
-      {'url': 'https://cdn.test/a.mkv', 'name': 'RD 1080p', 'title': 'Movie\n2GB', 'behaviorHints': {'proxyHeaders': {'request': {'User-Agent': 'x'}}}, 'subtitles': [{'url': 'https://s.test/en.srt', 'lang': 'eng'}]},
-      {'infoHash': 'abc'}, {'url': 'magnet:?xt=urn:btih:abc'},
-    ]});
-    expect(s.length, 1);
-    expect(s.first.headers, {'User-Agent': 'x'});
-    expect(s.first.subtitles.single.lang, 'eng');
+    final streams = parseStreams('A', {
+      'streams': <dynamic>[
+        <String, dynamic>{
+          'url': 'https://cdn.test/a.mkv',
+          'name': 'RD 1080p',
+          'title': 'Movie\n2GB',
+          'behaviorHints': <String, dynamic>{
+            'proxyHeaders': <String, dynamic>{
+              'request': <String, dynamic>{'User-Agent': 'x'},
+            },
+          },
+          'subtitles': <dynamic>[
+            <String, dynamic>{'url': 'https://s.test/en.srt', 'lang': 'eng'},
+          ],
+        },
+        <String, dynamic>{'infoHash': 'abc'},
+        <String, dynamic>{'url': 'magnet:?xt=urn:btih:abc'},
+      ],
+    });
+    expect(streams.length, 1);
+    expect(streams.first.headers, {'User-Agent': 'x'});
+    expect(streams.first.subtitles.single.lang, 'eng');
   });
 
   test('metaToItem maps addon meta', () {
-    final m = metaToItem({'id': 'tt1', 'type': 'series', 'name': 'Show', 'releaseInfo': '2019–2022', 'imdbRating': '8.1', 'runtime': '45 min', 'genres': ['Drama'], 'poster': 'https://p.test/p.jpg'});
-    expect(m.type, MediaType.show);
-    expect(m.typeStr, 'series');
-    expect(m.year, 2019);
-    expect(m.runtimeMin, 45);
-    expect(m.rating, 8.1);
+    final item = metaToItem({
+      'id': 'tt1',
+      'type': 'series',
+      'name': 'Show',
+      'releaseInfo': '2019–2022',
+      'imdbRating': '8.1',
+      'runtime': '45 min',
+      'genres': ['Drama'],
+      'poster': 'https://p.test/p.jpg',
+    });
+    expect(item.type, MediaType.show);
+    expect(item.typeStr, 'series');
+    expect(item.year, 2019);
+    expect(item.runtimeMin, 45);
+    expect(item.rating, 8.1);
   });
 }
