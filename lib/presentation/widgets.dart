@@ -76,12 +76,21 @@ class ShimmerBox extends StatelessWidget {
 class CosmicRow extends StatelessWidget {
   final String title;
   final List<MediaItem> items;
-  const CosmicRow({super.key, required this.title, required this.items});
+  final VoidCallback? onSeeAll;
+  const CosmicRow({super.key, required this.title, required this.items, this.onSeeAll});
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: nebulaCyan)),
+          child: Row(children: [
+            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: nebulaCyan))),
+            if (onSeeAll != null)
+              TextButton.icon(
+                onPressed: onSeeAll,
+                icon: const Icon(Icons.grid_view_rounded, size: 18),
+                label: const Text('See all'),
+              ),
+          ]),
         ),
         SizedBox(
           height: (MediaQuery.sizeOf(context).width >= 800 ? 170 : 130) * 1.5 + 8,
