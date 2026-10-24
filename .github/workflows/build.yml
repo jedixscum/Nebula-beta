@@ -17,7 +17,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Stamp build version
-        run: sed -i "s/^version:.*/version: 0.1.0+${{ github.run_number }}/" pubspec.yaml
+        run: |
+          sed -i "s/^version:.*/version: 0.1.0+${{ github.run_number }}/" pubspec.yaml
 
       - uses: actions/setup-java@v4
         with:
