@@ -13,6 +13,8 @@ mf = root / "app/src/main/AndroidManifest.xml"
 s = mf.read_text()
 if "android.permission.INTERNET" not in s:
     s = s.replace("<application", '<uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+if "android.permission.REQUEST_INSTALL_PACKAGES" not in s:
+    s = s.replace("<application", '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>\n    <application', 1)
 if "usesCleartextTraffic" not in s:
     s = s.replace("<application", '<application android:usesCleartextTraffic="true"', 1)
 if "supportsPictureInPicture" not in s:
@@ -27,6 +29,12 @@ if TV_MODE:
     launcher = '<category android:name="android.intent.category.LAUNCHER"/>'
     if launcher in s and 'android.intent.category.LEANBACK_LAUNCHER' not in s:
         s = s.replace(launcher, launcher + '\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>')
+
+# Securely expose downloaded APKs to Android's package installer.
+if 'androidx.core.content.FileProvider' not in s:
+    provider = '''\n        <provider\n            android:name="androidx.core.content.FileProvider"\n            android:authorities="${applicationId}.fileprovider"\n            android:exported="false"\n            android:grantUriPermissions="true">\n            <meta-data\n                android:name="android.support.FILE_PROVIDER_PATHS"\n                android:resource="@xml/file_paths" />\n        </provider>'''
+    s = s.replace('</application>', provider + '\n    </application>')
+
 mf.write_text(s)
 
 # Keep phone and TV installs side-by-side.
@@ -41,6 +49,11 @@ for name in ("app/build.gradle.kts", "app/build.gradle"):
         t = re.sub(r'applicationId\s*=\s*"com\.nebula\.nebula"', 'applicationId = "com.nebula.nebula.tv"', t)
         t = re.sub(r'applicationId\s+"com\.nebula\.nebula"', 'applicationId "com.nebula.nebula.tv"', t)
     f.write_text(t)
+
+# FileProvider paths: only the app-private cache is exposed.
+paths = root / "app/src/main/res/xml/file_paths.xml"
+paths.parent.mkdir(parents=True, exist_ok=True)
+paths.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<paths xmlns:android="http://schemas.android.com/apk/res/android">\n    <cache-path name="apk_cache" path="."/>\n</paths>\n''')
 
 if TV_MODE:
     banner = root / "app/src/main/res/drawable-nodpi/tv_banner.xml"
@@ -70,11 +83,19 @@ pkg = pkg_match.group(1)
 act.write_text("""package %s
 
 import android.app.PictureInPictureParams
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.util.Rational
+import android.view.WindowManager
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -90,6 +111,58 @@ class MainActivity : FlutterActivity() {
                         result.success(enterPictureInPictureMode(params))
                     } else {
                         result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nebula/updater").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getVersion" -> {
+                    @Suppress("DEPRECATION")
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    result.success(mapOf(
+                        "name" to (info.versionName ?: "0.1.0"),
+                        "build" to if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode,
+                    ))
+                }
+                "isTv" -> {
+                    val mode = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK
+                    result.success(mode == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION)
+                }
+                "openInstallSettings" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                    }
+                    result.success("opened")
+                }
+                "installApk" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.error("INVALID_PATH", "APK path is missing", null)
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                        result.success("permission_required")
+                    } else {
+                        try {
+                            val file = File(path)
+                            if (!file.exists()) {
+                                result.error("MISSING_FILE", "APK no longer exists", null)
+                                return@setMethodCallHandler
+                            }
+                            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/vnd.android.package-archive")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(intent)
+                            result.success("started")
+                        } catch (e: ActivityNotFoundException) {
+                            result.error("NO_INSTALLER", "No Android package installer is available", null)
+                        } catch (e: Exception) {
+                            result.error("INSTALL_ERROR", e.message, null)
+                        }
                     }
                 }
                 else -> result.notImplemented()
