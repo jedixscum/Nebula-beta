@@ -6,7 +6,6 @@ import '../data/catalog.dart';
 import '../data/download_manager.dart';
 import '../data/home_layout.dart';
 import '../data/providers.dart';
-import '../data/sample_data.dart';
 import '../domain/media_item.dart';
 
 Future<String?> _prompt(BuildContext c, String title, {String initial = '', String? hint, int lines = 1}) {
@@ -131,7 +130,7 @@ class CatalogScreen extends ConsumerWidget {
                     final id = await showDialog<String>(
                       context: context,
                       builder: (d) => SimpleDialog(title: const Text('Add title'), children: [
-                        for (final m in [...sampleItems.where((m) => m.type != MediaType.live), ...ref.read(libraryItemsProvider).where((l) => findItem(l.id) == null)])
+                        for (final m in ref.read(libraryItemsProvider).where((m) => m.type != MediaType.live))
                           SimpleDialogOption(onPressed: () => Navigator.pop(d, m.id), child: Text(m.title)),
                       ]),
                     );
