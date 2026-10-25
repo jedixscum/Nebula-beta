@@ -46,10 +46,22 @@ class _ShellState extends ConsumerState<Shell> {
               ? Row(
                   children: [
                     NavigationRail(
+                      backgroundColor: settings.background.withOpacity(0.88),
+                      indicatorColor: settings.accent.withOpacity(0.28),
+                      minWidth: 92,
+                      minExtendedWidth: 120,
                       selectedIndex: _i,
                       onDestinationSelected: (v) => setState(() => _i = v),
                       labelType: NavigationRailLabelType.all,
-                      groupAlignment: -0.8,
+                      groupAlignment: -0.72,
+                      leading: Padding(
+                        padding: const EdgeInsets.only(top: 18, bottom: 22),
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 42, height: 42, decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFF18FFFF)])), child: const Icon(Icons.auto_awesome, color: Color(0xFF05060F), size: 25)),
+                          const SizedBox(height: 8),
+                          const Text('NEBULA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                        ]),
+                      ),
                       destinations: [
                         NavigationRailDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: Text(t.home)),
                         NavigationRailDestination(icon: const Icon(Icons.movie_outlined), selectedIcon: const Icon(Icons.movie), label: Text(t.movies)),
@@ -59,7 +71,7 @@ class _ShellState extends ConsumerState<Shell> {
                       ],
                     ),
                     const VerticalDivider(width: 1, thickness: 1),
-                    Expanded(child: pages[_i]),
+                    Expanded(child: FocusTraversalGroup(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 20, 12), child: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: KeyedSubtree(key: ValueKey(_i), child: pages[_i])))),
                   ],
                 )
               : pages[_i],
