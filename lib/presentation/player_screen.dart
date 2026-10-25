@@ -364,7 +364,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         child: SafeArea(
           child: Column(children: [
             Row(children: [
-              IconButton(autofocus: true, icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+              IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
               Expanded(child: Text(widget.item.title, overflow: TextOverflow.ellipsis)),
               IconButton(icon: const Icon(Icons.picture_in_picture_alt), tooltip: 'Picture-in-Picture', onPressed: _pip),
               PopupMenuButton<String>(
@@ -393,11 +393,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ]),
             const Spacer(),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              IconButton(icon: const Icon(Icons.replay_30), onPressed: () => _skip(const Duration(seconds: -30))),
-              IconButton(icon: const Icon(Icons.replay_10), onPressed: () => _skip(const Duration(seconds: -10))),
-              IconButton(iconSize: 56, icon: Icon(_playing ? Icons.pause_circle : Icons.play_circle), onPressed: _p.playOrPause),
-              IconButton(icon: const Icon(Icons.forward_10), onPressed: () => _skip(const Duration(seconds: 10))),
-              IconButton(icon: const Icon(Icons.forward_30), onPressed: () => _skip(const Duration(seconds: 30))),
+              IconButton(tooltip: 'Back 30 seconds', style: IconButton.styleFrom(minimumSize: const Size(56, 56)), icon: const Icon(Icons.replay_30), onPressed: () => _skip(const Duration(seconds: -30))),
+              IconButton(tooltip: 'Back 10 seconds', style: IconButton.styleFrom(minimumSize: const Size(56, 56)), icon: const Icon(Icons.replay_10), onPressed: () => _skip(const Duration(seconds: -10))),
+              IconButton(autofocus: true, iconSize: 68, style: IconButton.styleFrom(minimumSize: const Size(76, 76), backgroundColor: nebulaViolet.withOpacity(0.24), focusColor: nebulaCyan.withOpacity(0.28)), icon: Icon(_playing ? Icons.pause_circle : Icons.play_circle), onPressed: _p.playOrPause),
+              IconButton(tooltip: 'Forward 10 seconds', style: IconButton.styleFrom(minimumSize: const Size(56, 56)), icon: const Icon(Icons.forward_10), onPressed: () => _skip(const Duration(seconds: 10))),
+              IconButton(tooltip: 'Forward 30 seconds', style: IconButton.styleFrom(minimumSize: const Size(56, 56)), icon: const Icon(Icons.forward_30), onPressed: () => _skip(const Duration(seconds: 30))),
             ]),
             if (!_isLive && _dur > Duration.zero)
               Row(children: [
