@@ -8,64 +8,48 @@ import '../core/starfield.dart';
 import '../core/theme.dart';
 import '../domain/media_item.dart';
 
-/// Poster card with glowing border. Falls back to a cosmic gradient when no poster.
-class PosterCard extends StatelessWidget {
+/// Poster card with a high-contrast focus state for TV remotes and keyboards.
+class PosterCard extends StatefulWidget {
   final MediaItem item;
   final double width;
   const PosterCard({super.key, required this.item, this.width = 130});
-
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: () => context.push('/detail', extra: item),
-        borderRadius: BorderRadius.circular(14),
-        focusColor: nebulaCyan.withOpacity(0.20),
-        child: Container(
-          width: width,
-          margin: const EdgeInsets.only(right: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: nebulaViolet.withOpacity(0.6)),
-            boxShadow: [BoxShadow(color: nebulaViolet.withOpacity(0.35), blurRadius: 12)],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(13),
-            child: AspectRatio(
-              aspectRatio: 2 / 3,
-              child: Stack(fit: StackFit.expand, children: [
-                if (item.posterUrl != null)
-                  CachedNetworkImage(
-                      imageUrl: item.posterUrl!, fit: BoxFit.cover,
-                      placeholder: (_, __) => const ShimmerBox(),
-                      errorWidget: (_, __, ___) => _fallback())
-                else
-                  _fallback(),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                        gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                            colors: [Colors.black87, Colors.transparent])),
-                    child: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                  ),
-                ),
-              ]),
-            ),
-          ),
-        ),
-      );
-
-  Widget _fallback() => Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-          Color((item.title.hashCode & 0xFFFFFF) | 0xFF000000).withOpacity(0.7),
-          nebulaViolet.withOpacity(0.4),
-        ])),
-        child: const Icon(Icons.auto_awesome, size: 36, color: Colors.white54),
-      );
+  State<PosterCard> createState() => _PosterCardState();
 }
-
+class _PosterCardState extends State<PosterCard> {
+  bool _focused = false;
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    return Semantics(button: true, label: 'Open ${item.title}', child: InkWell(
+      onTap: () => context.push('/detail', extra: item),
+      onFocusChange: (focused) { if (_focused != focused) setState(() => _focused = focused); },
+      borderRadius: BorderRadius.circular(16), focusColor: nebulaCyan.withOpacity(0.18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120), width: widget.width,
+        margin: const EdgeInsets.only(right: 14, top: 4, bottom: 8),
+        transform: Matrix4.identity()..scale(_focused ? 1.035 : 1.0), transformAlignment: Alignment.center,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _focused ? nebulaCyan : nebulaViolet.withOpacity(0.62), width: _focused ? 3 : 1),
+          boxShadow: [BoxShadow(color: (_focused ? nebulaCyan : nebulaViolet).withOpacity(_focused ? 0.48 : 0.24), blurRadius: _focused ? 22 : 10, spreadRadius: _focused ? 1 : 0)]),
+        child: ClipRRect(borderRadius: BorderRadius.circular(13), child: AspectRatio(aspectRatio: 2 / 3, child: Stack(fit: StackFit.expand, children: [
+          if (item.posterUrl != null) CachedNetworkImage(imageUrl: item.posterUrl!, fit: BoxFit.cover, placeholder: (_, __) => const ShimmerBox(), errorWidget: (_, __, ___) => _fallback(item)) else _fallback(item),
+          Align(alignment: Alignment.bottomCenter, child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 24, 10, 10),
+            decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black87, Colors.transparent])),
+            child: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: MediaQuery.sizeOf(context).width >= 800 ? 14 : 12, color: Colors.white)))),
+          if (_focused) const Positioned(top: 8, right: 8, child: DecoratedBox(
+            decoration: BoxDecoration(color: Color(0xDD05060F), shape: BoxShape.circle),
+            child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.play_arrow_rounded, size: 20, color: nebulaCyan)))),
+        ]))),
+      ),
+    ));
+  }
+  Widget _fallback(MediaItem item) => Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [
+    Color((item.title.hashCode & 0xFFFFFF) | 0xFF000000).withOpacity(0.7), nebulaViolet.withOpacity(0.4),
+  ])), child: const Icon(Icons.auto_awesome, size: 36, color: Colors.white54));
+}
 class ShimmerBox extends StatelessWidget {
   const ShimmerBox({super.key});
   @override
@@ -83,7 +67,7 @@ class CosmicRow extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Row(children: [
-            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: nebulaCyan))),
+            Expanded(child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: nebulaCyan, fontWeight: FontWeight.w800))),
             if (onSeeAll != null)
               TextButton.icon(
                 onPressed: onSeeAll,
@@ -93,14 +77,14 @@ class CosmicRow extends StatelessWidget {
           ]),
         ),
         SizedBox(
-          height: (MediaQuery.sizeOf(context).width >= 800 ? 170 : 130) * 1.5 + 8,
+          height: (MediaQuery.sizeOf(context).width >= 800 ? 190 : 130) * 1.5 + 16,
           child: items.isEmpty
               ? const Center(child: Text('Nothing here yet', style: TextStyle(color: Colors.white38)))
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.only(left: 16),
                   itemCount: items.length,
-                  itemBuilder: (context, i) => PosterCard(item: items[i], width: MediaQuery.sizeOf(context).width >= 800 ? 170 : 130)),
+                  itemBuilder: (context, i) => PosterCard(item: items[i], width: MediaQuery.sizeOf(context).width >= 800 ? 190 : 130)),
         ),
       ]);
 }
