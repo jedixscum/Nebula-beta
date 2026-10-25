@@ -86,7 +86,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
       enabled: themeSettings.starfieldEnabled,
       child: Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: Text(item.title)),
-        body: ListView(padding: const EdgeInsets.all(16), children: [
+        body: FocusTraversalGroup(child: ListView(padding: EdgeInsets.symmetric(horizontal: MediaQuery.sizeOf(context).width >= 800 ? 36 : 16, vertical: 20), children: [
           Wrap(spacing: 8, children: [
             if (item.year > 0) Chip(label: Text('${item.year}')),
             if (item.runtimeMin > 0) Chip(label: Text('${item.runtimeMin} min')),
@@ -102,6 +102,8 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
           const SizedBox(height: 24),
           if (!isSeries)
             FilledButton.icon(
+              autofocus: true,
+              style: FilledButton.styleFrom(minimumSize: Size(MediaQuery.sizeOf(context).width >= 800 ? 280 : 0, 58), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16)),
               icon: const Icon(Icons.rocket_launch),
               label: Text(done ? '${t.launch} (offline)' : t.launch),
               onPressed: isAddonItem ? () => _pickStream(item) : (playable.streamUrl == null ? null : () => context.push('/player', extra: playable)),
@@ -118,6 +120,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                 title: Text(e.title),
                 trailing: const Icon(Icons.play_arrow),
                 onTap: () => _pickStream(item.copyWith(id: e.id, title: '${item.title} S${e.season}E${e.number}')),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
           ],
           if (isSeries && season == null)
@@ -148,7 +151,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
             label: Text(inLib ? 'Remove from library' : 'Add to library'),
             onPressed: () => ref.read(libraryProvider.notifier).toggle(item),
           ),
-        ]),
+        ])),
       ),
     );
   }
