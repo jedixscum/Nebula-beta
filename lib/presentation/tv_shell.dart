@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/starfield.dart';
-import '../data/addon_service.dart';
+import '../data/addon_service.dart' as addon_service;
 import '../data/history_store.dart';
 import '../data/providers.dart';
 import '../data/theme_settings.dart';
@@ -83,7 +83,7 @@ class _TvHomePageState extends ConsumerState<TvHomePage> {
   final _search = TextEditingController(); final _searchFocus = FocusNode();
   @override void dispose() { _search.dispose(); _searchFocus.dispose(); super.dispose(); }
   @override Widget build(BuildContext context) {
-    final query = ref.watch(queryProvider).trim(); final results = ref.watch(searchResultsProvider); final addons = ref.watch(addonsProvider); final rows = ref.watch(addonRowsProvider); final history = HistoryStore().all();
+    final query = ref.watch(queryProvider).trim(); final results = ref.watch(addon_service.searchResultsProvider); final addons = ref.watch(addonsProvider); final rows = ref.watch(addon_service.addonRowsProvider); final history = HistoryStore().all();
     final continueItems = history.where((e) => e.durMs > 0 && e.posMs < e.durMs * .92).map((e) => resolveItem(e.id)).whereType<MediaItem>().toList(); final library = ref.watch(libraryItemsProvider); final favorites = ref.watch(favoritesItemsProvider);
     Widget searchBox() => Padding(padding: const EdgeInsets.fromLTRB(34, 8, 34, 18), child: FocusableActionDetector(focusNode: _searchFocus, child: SearchBar(controller: _search, hintText: 'Search movies, shows, people and more', leading: const Icon(Icons.search_rounded, size: 28), trailing: [if (query.isNotEmpty) IconButton(onPressed: () { _search.clear(); ref.read(queryProvider.notifier).state = ''; }, icon: const Icon(Icons.clear))], textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 18, fontWeight: FontWeight.w600)), padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 20)), onChanged: (v) => ref.read(queryProvider.notifier).state = v)));
     if (query.isNotEmpty) return Column(children: [searchBox(), Expanded(child: results.when(loading: () => const Center(child: CircularProgressIndicator()), error: (e, _) => _TvEmpty(message: 'Search failed: $e'), data: (items) => items.isEmpty ? const _TvEmpty(message: 'No results found.') : ListView(children: [CosmicRow(title: 'Search results', items: items)]))) ]);
