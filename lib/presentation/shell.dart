@@ -71,7 +71,7 @@ class _ShellState extends ConsumerState<Shell> {
                       ],
                     ),
                     const VerticalDivider(width: 1, thickness: 1),
-                    Expanded(child: FocusTraversalGroup(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 20, 12), child: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: KeyedSubtree(key: ValueKey(_i), child: pages[_i])))),
+                    Expanded(child: FocusTraversalGroup(child: Padding(padding: const EdgeInsets.fromLTRB(12, 8, 20, 12), child: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: KeyedSubtree(key: ValueKey(_i), child: pages[_i]))))),
                   ],
                 )
               : pages[_i],
