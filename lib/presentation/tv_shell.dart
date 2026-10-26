@@ -38,13 +38,14 @@ class _TvShellState extends ConsumerState<TvShell> {
     setState(() => _selected = index);
   }
 
+  // Do not make this list const: CatalogGrid's constructor is not const.
   List<Widget> _pages() {
-    return const <Widget>[
-      TvHomePage(),
+    return <Widget>[
+      const TvHomePage(),
       CatalogGrid(type: MediaType.movie),
       CatalogGrid(type: MediaType.show),
-      LibraryPage(),
-      ProfilePage(),
+      const LibraryPage(),
+      const ProfilePage(),
     ];
   }
 
@@ -443,7 +444,6 @@ class TvHomePage extends StatelessWidget {
       children: <Widget>[
         _TvHero(onSearch: () => context.push('/search')),
         const SizedBox(height: 28),
-        const CosmicRow(title: 'Browse your library', items: const []),
       ],
     );
   }
