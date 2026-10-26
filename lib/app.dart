@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'domain/media_item.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/shell.dart';
+import 'presentation/tv_shell.dart';
 import 'presentation/detail_screen.dart';
 import 'presentation/player_screen.dart';
 import 'presentation/addons_screen.dart';
@@ -21,7 +22,7 @@ import 'presentation/update_screen.dart';
 final _router = GoRouter(
   initialLocation: '/launch',
   routes: [
-    GoRoute(path: '/', builder: (_, __) => const Shell()),
+    GoRoute(path: '/', builder: (context, __) => MediaQuery.sizeOf(context).width >= 800 ? const TvShell() : const Shell()),
     GoRoute(path: '/launch', builder: (_, __) => const LaunchScreen()),
     GoRoute(path: '/detail', builder: (_, s) => DetailScreen(item: s.extra as MediaItem)),
     GoRoute(path: '/player', builder: (_, s) => PlayerScreen(item: s.extra as MediaItem)),
